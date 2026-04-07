@@ -12,10 +12,10 @@ const SettingsPage = () => {
   const { user, updateProfile } = useAuth();
   const { toast } = useToast();
 
-  if (!user) return <Navigate to="/login" />;
-
-  const [profile, setProfile] = useState({ name: user.name, email: user.email, phone: user.phone });
+  const [profile, setProfile] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
   const [passwords, setPasswords] = useState({ current: '', newPassword: '', confirm: '' });
+
+  if (!user) return <Navigate to="/login" />;
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
