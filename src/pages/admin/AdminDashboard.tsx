@@ -2,6 +2,13 @@ import { useHotel } from '@/contexts/HotelContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { BedDouble, CalendarCheck, DollarSign, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 const AdminDashboard = () => {
   const { rooms, bookings, payments } = useHotel();
@@ -15,11 +22,58 @@ const AdminDashboard = () => {
     { icon: AlertCircle, label: 'Unpaid', value: bookings.filter(b => b.paymentStatus === 'unpaid').length, sub: 'awaiting payment' },
   ];
 
+  // Revenue by room tier
+  const tierRevenue = rooms.reduce((acc, room) => {
+    const roomBookings = bookings.filter(b => b.roomId === room.id);
+    const revenue = roomBookings.reduce((s, b) => s + b.totalAmount, 0);
+    const existing = acc.find(a => a.tier === room.tier);
+    if (existing) { existing.revenue += revenue; existing.bookings += roomBookings.length; }
+    else acc.push({ tier: room.tier, revenue, bookings: roomBookings.length });
+    return acc;
+  }, [] as { tier: string; revenue: number; bookings: number }[]);
+
+  // Monthly revenue (simulated from booking data)
+  const monthlyData = [
+    { month: 'Jan', revenue: 1200, bookings: 3 },
+    { month: 'Feb', revenue: 1800, bookings: 5 },
+    { month: 'Mar', revenue: 3596, bookings: 4 },
+    { month: 'Apr', revenue: payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0), bookings: bookings.length },
+    { month: 'May', revenue: 800, bookings: 2 },
+    { month: 'Jun', revenue: 0, bookings: 0 },
+  ];
+
+  // Booking status breakdown
+  const statusData = [
+    { name: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length, fill: 'hsl(var(--primary))' },
+    { name: 'Checked In', value: bookings.filter(b => b.status === 'checked_in').length, fill: 'hsl(var(--success))' },
+    { name: 'Pending', value: bookings.filter(b => b.status === 'pending').length, fill: 'hsl(var(--warning))' },
+    { name: 'Cancelled', value: bookings.filter(b => b.status === 'cancelled').length, fill: 'hsl(var(--destructive))' },
+  ].filter(d => d.value > 0);
+
+  // Payment status breakdown
+  const paymentStatusData = [
+    { name: 'Paid', value: payments.filter(p => p.status === 'paid').length, fill: 'hsl(var(--success))' },
+    { name: 'Unpaid', value: payments.filter(p => p.status === 'unpaid').length, fill: 'hsl(var(--destructive))' },
+    { name: 'Refunded', value: payments.filter(p => p.status === 'refunded').length, fill: 'hsl(var(--muted-foreground))' },
+  ].filter(d => d.value > 0);
+
+  const revenueConfig: ChartConfig = {
+    revenue: { label: 'Revenue ($)', color: 'hsl(var(--primary))' },
+  };
+  const tierConfig: ChartConfig = {
+    revenue: { label: 'Revenue ($)', color: 'hsl(var(--primary))' },
+    bookings: { label: 'Bookings', color: 'hsl(var(--accent-foreground))' },
+  };
+  const bookingLineConfig: ChartConfig = {
+    bookings: { label: 'Bookings', color: 'hsl(var(--primary))' },
+  };
+
   return (
     <div className="animate-fade-in">
       <h1 className="font-heading text-2xl font-bold text-foreground">Dashboard Overview</h1>
       <p className="text-muted-foreground">Welcome to the admin panel</p>
 
+      {/* Stats Cards */}
       <div className="mt-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         {stats.map((s, i) => (
           <Card key={i} className="card-elevated">
@@ -33,7 +87,91 @@ const AdminDashboard = () => {
         ))}
       </div>
 
+      {/* Charts Row 1 */}
       <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-4">Monthly Revenue</h3>
+            <ChartContainer config={revenueConfig} className="h-[250px] w-full">
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis className="text-xs" />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-4">Booking Trend</h3>
+            <ChartContainer config={bookingLineConfig} className="h-[250px] w-full">
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis className="text-xs" />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="bookings" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-4">Revenue by Room Tier</h3>
+            <ChartContainer config={tierConfig} className="h-[250px] w-full">
+              <BarChart data={tierRevenue}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="tier" className="text-xs" />
+                <YAxis className="text-xs" />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-4">Booking Status</h3>
+            <ChartContainer config={{ status: { label: 'Status' } }} className="h-[250px] w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                  {statusData.map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-4">Payment Status</h3>
+            <ChartContainer config={{ payment: { label: 'Payments' } }} className="h-[250px] w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                <Pie data={paymentStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                  {paymentStatusData.map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Bookings & Room Status */}
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
         <Card>
           <CardContent className="p-5">
             <h3 className="font-heading text-lg font-semibold text-foreground">Recent Bookings</h3>
