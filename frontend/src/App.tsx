@@ -5,10 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HotelProvider } from "@/contexts/HotelContext";
-import StatusBar from "@/components/StatusBar";
+import { SupabaseStatus } from "@/components/SupabaseStatus";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import AdminLayout from "@/components/layout/AdminLayout";
+import StaffLayout from "@/components/layout/StaffLayout";
 import HomePage from "@/pages/HomePage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
@@ -24,7 +25,11 @@ import AdminBookings from "@/pages/admin/AdminBookings";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminSettings from "@/pages/admin/AdminSettings";
-import NotFound from "./pages/NotFound";
+import StaffDashboard from "@/pages/staff/StaffDashboard";
+import StaffFrontDesk from "@/pages/staff/StaffFrontDesk";
+import StaffHousekeeping from "@/pages/staff/StaffHousekeeping";
+import StaffReservations from "@/pages/staff/StaffReservations";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -56,10 +61,17 @@ const App = () => (
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
+              <Route element={<StaffLayout />}>
+                <Route path="/staff" element={<StaffDashboard />} />
+                <Route path="/staff/front-desk" element={<StaffFrontDesk />} />
+                <Route path="/staff/housekeeping" element={<StaffHousekeeping />} />
+                <Route path="/staff/reservations" element={<StaffReservations />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        <SupabaseStatus />
       </HotelProvider>
     </AuthProvider>
   </QueryClientProvider>

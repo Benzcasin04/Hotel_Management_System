@@ -10,23 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { mockUsers } from '@/data/mockData';
+import { logAuditAction } from './AdminSettings';
 import { Payment, PaymentStatus } from '@/types/hotel';
 import { DollarSign, Pencil } from 'lucide-react';
 
 const paymentColors: Record<string, string> = {
-  unpaid: 'bg-destructive/20 text-destructive',
-  paid: 'bg-success/20 text-success',
+  pending: 'bg-destructive/20 text-destructive',
+  completed: 'bg-success/20 text-success',
   refunded: 'bg-muted text-muted-foreground',
 };
 
 const AdminPayments = () => {
-  const { payments, bookings, rooms, updatePaymentStatus, adjustPaymentAmount } = useHotel();
+  const { payments, bookings, rooms, updatePaymentStatus, adjustPaymentAmount, processRefund } = useHotel();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [adjustAmount, setAdjustAmount] = useState(0);
   const [adjustNote, setAdjustNote] = useState('');
-  const [adjustStatus, setAdjustStatus] = useState<PaymentStatus>('paid');
+  const [adjustStatus, setAdjustStatus] = useState<PaymentStatus>('completed');
 
   const openAdjust = (payment: Payment) => {
     setSelectedPayment(payment);
@@ -36,17 +37,53 @@ const AdminPayments = () => {
     setDialogOpen(true);
   };
 
-  const handleAdjust = () => {
+  const handleAdjust = async () => {
     if (!selectedPayment) return;
-    adjustPaymentAmount(selectedPayment.bookingId, adjustAmount, adjustNote, 'admin');
-    updatePaymentStatus(selectedPayment.bookingId, adjustStatus, adjustNote, 'admin');
-    toast({ title: 'Payment adjusted!' });
-    setDialogOpen(false);
+    try {
+      await adjustPaymentAmount(selectedPayment.id, adjustAmount, adjustNote, 'admin');
+      await updatePaymentStatus(selectedPayment.id, adjustStatus, adjustNote, 'admin');
+      
+      // Log to audit trail
+      const booking = bookings.find(b => b.id === selectedPayment.bookingId);
+      const user = mockUsers.find(u => u.id === booking?.userId);
+      logAuditAction(
+        'Adjusted Payment',
+        `Payment #${selectedPayment.id.slice(0, 8)} - ${user?.name || 'Guest'}`,
+        'warning',
+        `Amount adjusted to $${adjustAmount}, status changed to ${adjustStatus}`
+      );
+      
+      toast({ title: 'Payment adjusted!' });
+      setDialogOpen(false);
+    } catch (error) {
+      toast({ title: 'Failed to adjust payment', variant: 'destructive' });
+    }
   };
 
-  const handleQuickStatus = (bookingId: string, status: PaymentStatus) => {
-    updatePaymentStatus(bookingId, status, undefined, 'admin');
-    toast({ title: `Payment marked as ${status}` });
+  const handleQuickStatus = async (paymentId: string, status: PaymentStatus) => {
+    try {
+      const payment = payments.find(p => p.id === paymentId);
+      const booking = bookings.find(b => b.id === payment?.bookingId);
+      const user = mockUsers.find(u => u.id === booking?.userId);
+      
+      if (status === 'refunded') {
+        await processRefund(paymentId);
+      } else {
+        await updatePaymentStatus(paymentId, status, undefined, 'admin');
+      }
+      
+      // Log to audit trail
+      logAuditAction(
+        status === 'refunded' ? 'Processed Refund' : `Updated Payment to ${status}`,
+        `Payment #${paymentId.slice(0, 8)} - ${user?.name || 'Guest'}`,
+        status === 'refunded' ? 'warning' : 'success',
+        `Payment status changed to ${status}`
+      );
+      
+      toast({ title: `Payment marked as ${status}` });
+    } catch (error) {
+      toast({ title: 'Failed to update payment', variant: 'destructive' });
+    }
   };
 
   return (
@@ -76,9 +113,9 @@ const AdminPayments = () => {
                   <Badge className={paymentColors[payment.status]}>{payment.status}</Badge>
                   <span className="text-xl font-bold text-foreground">${payment.amount}</span>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.bookingId, 'paid')} className="text-xs">Mark Paid</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.bookingId, 'unpaid')} className="text-xs">Mark Unpaid</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.bookingId, 'refunded')} className="text-xs">Refund</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.id, 'completed')} className="text-xs">Mark Paid</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.id, 'pending')} className="text-xs">Mark Unpaid</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleQuickStatus(payment.id, 'refunded')} className="text-xs">Refund</Button>
                     <Button size="sm" variant="outline" onClick={() => openAdjust(payment)}><Pencil className="h-3 w-3" /></Button>
                   </div>
                 </div>
@@ -103,8 +140,8 @@ const AdminPayments = () => {
               <Select value={adjustStatus} onValueChange={v => setAdjustStatus(v as PaymentStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="refunded">Refunded</SelectItem>
                 </SelectContent>
               </Select>

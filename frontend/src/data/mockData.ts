@@ -1,4 +1,4 @@
-import { User, Room, Booking, Payment } from '@/types/hotel';
+import { User, Room, Booking, Payment, AuditLog } from '@/types/hotel';
 import roomLuxury from '@/assets/room-luxury.jpg';
 import roomSuite from '@/assets/room-suite.jpg';
 import roomStandard from '@/assets/room-standard.jpg';
@@ -11,6 +11,7 @@ export const mockUsers: User[] = [
     name: 'Admin Manager',
     phone: '+1-555-0100',
     role: 'admin',
+    isActive: true,
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -19,6 +20,7 @@ export const mockUsers: User[] = [
     name: 'John Doe',
     phone: '+1-555-0201',
     role: 'user',
+    isActive: true,
     createdAt: '2024-06-15T00:00:00Z',
   },
   {
@@ -27,7 +29,26 @@ export const mockUsers: User[] = [
     name: 'Jane Smith',
     phone: '+1-555-0302',
     role: 'user',
+    isActive: true,
     createdAt: '2024-08-20T00:00:00Z',
+  },
+  {
+    id: 'user-4',
+    email: 'staff@luxehotel.com',
+    name: 'Maria Garcia',
+    phone: '+1-555-0400',
+    role: 'staff',
+    isActive: true,
+    createdAt: '2024-03-10T00:00:00Z',
+  },
+  {
+    id: 'user-5',
+    email: 'frontdesk@luxehotel.com',
+    name: 'Carlos Rivera',
+    phone: '+1-555-0500',
+    role: 'staff',
+    isActive: true,
+    createdAt: '2024-05-01T00:00:00Z',
   },
 ];
 
@@ -43,6 +64,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'TV', 'Mini Fridge'],
     images: [roomStandard],
     isActive: true,
+    condition: 'clean',
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -56,6 +78,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'TV', 'Mini Bar', 'Room Service', 'Safe'],
     images: [roomStandard],
     isActive: true,
+    condition: 'clean',
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -69,6 +92,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'Smart TV', 'Mini Bar', 'Room Service', 'Safe', 'Bathrobe', 'Spa Access'],
     images: [roomLuxury],
     isActive: true,
+    condition: 'dirty',
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -82,6 +106,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'Smart TV', 'Full Bar', 'Room Service', 'Safe', 'Bathrobe', 'Spa Access', 'Butler Service', 'Lounge Access'],
     images: [roomSuite],
     isActive: true,
+    condition: 'clean',
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -95,6 +120,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'Smart TV', 'Full Bar', 'Room Service', 'Safe', 'Bathrobe', 'Private Spa', 'Butler Service', 'Lounge Access', 'Private Terrace', 'Jacuzzi', 'Dining Room'],
     images: [roomPresidential],
     isActive: true,
+    condition: 'maintenance',
     createdAt: '2024-01-01T00:00:00Z',
   },
   {
@@ -108,6 +134,7 @@ export const mockRooms: Room[] = [
     amenities: ['Wi-Fi', 'Air Conditioning', 'TV'],
     images: [roomStandard],
     isActive: false,
+    condition: 'dirty',
     createdAt: '2024-02-01T00:00:00Z',
   },
 ];
@@ -180,3 +207,5 @@ export const mockPayments: Payment[] = [
     createdAt: '2026-04-05T09:30:00Z',
   },
 ];
+
+export const mockAuditLogs: AuditLog[] = [];

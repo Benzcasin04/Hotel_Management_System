@@ -6,22 +6,31 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Hotel } from 'lucide-react';
+import { Hotel, Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = login(email, password);
+    const result = await login(email, password);
+    
     if (result.success) {
-      toast({ title: 'Welcome back!' });
-      const user = email === 'admin@luxehotel.com' ? 'admin' : 'user';
-      navigate(user === 'admin' ? '/admin' : '/dashboard');
+      // Navigate based on role returned from login (handle both 'Admin' and 'admin')
+      const role = (result.role || 'user').toLowerCase();
+      
+      if (role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (role === 'staff') {
+        navigate('/staff', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } else {
       toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
     }
@@ -45,19 +54,18 @@ const LoginPage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="•••••••••" required />
+              <div className="relative">
+                <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required className="pr-10" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <Button type="submit" className="w-full">Sign In</Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don't have an account? <Link to="/signup" className="text-primary hover:underline">Sign Up</Link>
           </p>
-          <div className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
-            <strong>Demo accounts:</strong><br />
-            Admin: admin@luxehotel.com<br />
-            User: john@example.com or jane@example.com<br />
-            (any password works)
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useHotel } from '@/contexts/HotelContext';
+import { useToast } from '@/hooks/use-toast';
+import { logAuditAction } from './AdminSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
 import { RoomTier, Room } from '@/types/hotel';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import roomStandard from '@/assets/room-standard.jpg';
@@ -17,8 +18,11 @@ import roomLuxury from '@/assets/room-luxury.jpg';
 import roomSuite from '@/assets/room-suite.jpg';
 import roomPresidential from '@/assets/room-presidential.jpg';
 
+// Hotel room image URL (replace with your own or use local file)
+const roomBasic = 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80';
+
 const defaultImages: Record<RoomTier, string> = {
-  Basic: roomStandard,
+  Basic: roomBasic,
   Standard: roomStandard,
   Deluxe: roomLuxury,
   Suite: roomSuite,
@@ -32,7 +36,7 @@ const AdminRooms = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
 
-  const emptyForm = { name: '', tier: 'Basic' as RoomTier, floor: 1, capacity: 2, pricePerNight: 89, description: '', amenities: 'Wi-Fi, Air Conditioning, TV', isActive: true };
+  const emptyForm = { name: '', tier: 'Basic' as RoomTier, floor: 1, capacity: 2, pricePerNight: 89, description: '', amenities: 'Wi-Fi, Air Conditioning, TV', isActive: true, image: '' };
   const [form, setForm] = useState(emptyForm);
 
   const filtered = rooms.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.tier.toLowerCase().includes(search.toLowerCase()));
@@ -54,25 +58,73 @@ const AdminRooms = () => {
       description: room.description,
       amenities: room.amenities.join(', '),
       isActive: room.isActive,
+      image: room.images?.[0] || '',
     });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const amenities = form.amenities.split(',').map(a => a.trim()).filter(Boolean);
+    
+    // Determine image URL based on whether we're editing and if tier changed
+    let imageUrl: string;
     if (editingRoom) {
-      updateRoom(editingRoom.id, { ...form, amenities });
-      toast({ title: 'Room updated!' });
+      const oldTier = editingRoom.tier;
+      const oldDefaultImage = defaultImages[oldTier];
+      const currentImageInForm = form.image?.trim();
+      
+      // If image field is empty OR contains the old tier's default image, use new tier's default
+      if (!currentImageInForm || currentImageInForm === oldDefaultImage) {
+        imageUrl = defaultImages[form.tier];
+      } else {
+        // User entered a custom image URL
+        imageUrl = currentImageInForm;
+      }
     } else {
-      addRoom({ ...form, amenities, images: [defaultImages[form.tier]] });
-      toast({ title: 'Room created!' });
+      // New room: use custom URL if provided, otherwise use tier default
+      imageUrl = form.image?.trim() || defaultImages[form.tier];
     }
-    setDialogOpen(false);
+    
+    try {
+      if (editingRoom) {
+        await updateRoom(editingRoom.id, { ...form, amenities, images: [imageUrl] });
+        logAuditAction('Updated Room', form.name, 'success', `Room ${form.name} was updated`);
+        toast({ title: 'Room updated!' });
+      } else {
+        await addRoom({ ...form, amenities, images: [imageUrl], condition: 'clean' });
+        logAuditAction('Created Room', form.name, 'success', `New room ${form.name} was created`);
+        toast({ title: 'Room created!' });
+      }
+      setDialogOpen(false);
+    } catch (error: any) {
+      console.error('Save error:', error);
+      toast({ title: 'Error', description: error.message || 'Failed to save room', variant: 'destructive' });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteRoom(id);
-    toast({ title: 'Room deleted' });
+  const handleDelete = async (id: string) => {
+    try {
+      const room = rooms.find(r => r.id === id);
+      await deleteRoom(id);
+      logAuditAction('Deleted Room', room?.name || id, 'warning', `Room ${room?.name || id} was permanently deleted`);
+      toast({ title: 'Room deleted' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete room', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleRoomActive = async (id: string, isActive: boolean, name: string) => {
+    try {
+      await toggleRoomActive(id);
+      logAuditAction(
+        isActive ? 'Deactivated Room' : 'Activated Room',
+        name,
+        isActive ? 'warning' : 'success',
+        `Room ${name} was ${isActive ? 'deactivated' : 'activated'}`
+      );
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update room status', variant: 'destructive' });
+    }
   };
 
   return (
@@ -111,7 +163,7 @@ const AdminRooms = () => {
               <div className="mt-3 text-xs text-muted-foreground">Floor {room.floor} · {room.capacity} guests</div>
               <div className="mt-3 flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => openEdit(room)}><Pencil className="h-3 w-3" /></Button>
-                <Button variant="outline" size="sm" onClick={() => toggleRoomActive(room.id)}>
+                <Button variant="outline" size="sm" onClick={() => handleToggleRoomActive(room.id, room.isActive, room.name)}>
                   {room.isActive ? 'Deactivate' : 'Activate'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleDelete(room.id)} className="text-destructive hover:text-destructive">
@@ -167,6 +219,10 @@ const AdminRooms = () => {
             <div className="space-y-2">
               <Label>Amenities (comma-separated)</Label>
               <Input value={form.amenities} onChange={e => setForm(f => ({ ...f, amenities: e.target.value }))} placeholder="Wi-Fi, TV, Mini Bar..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Image URL (optional)</Label>
+              <Input value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} placeholder="https://example.com/room-image.jpg" />
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.isActive} onCheckedChange={v => setForm(f => ({ ...f, isActive: v }))} />

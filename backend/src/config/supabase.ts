@@ -7,6 +7,14 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+// Validate required env vars
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+}
+if (!supabaseServiceKey) {
+  console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY - user deletion from Auth will fail!');
+}
+
 // Client for user operations (uses RLS policies)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

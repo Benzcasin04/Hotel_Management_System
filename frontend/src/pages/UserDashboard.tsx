@@ -4,7 +4,10 @@ import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarCheck, BedDouble, Clock, DollarSign } from 'lucide-react';
+import { CalendarCheck, BedDouble, Clock, DollarSign, X, Users, Calendar, CreditCard, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useState } from 'react';
+import { Booking } from '@/types/hotel';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-warning/20 text-warning',
@@ -21,10 +24,21 @@ const paymentColors: Record<string, string> = {
 };
 
 const UserDashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { getBookingsByUser, getRoomById } = useHotel();
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (!user) return <Navigate to="/login" />;
+  // Wait for auth to finish loading before redirecting
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
 
   const bookings = getBookingsByUser(user.id);
 
@@ -68,7 +82,14 @@ const UserDashboard = () => {
             bookings.map(booking => {
               const room = getRoomById(booking.roomId);
               return (
-                <Card key={booking.id} className="card-elevated">
+                <Card 
+                  key={booking.id} 
+                  className="card-elevated cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setSelectedBooking(booking);
+                    setDialogOpen(true);
+                  }}
+                >
                   <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-4">
                       {room && <img src={room.images[0]} alt={room.name} className="h-16 w-24 rounded-md object-cover" />}
@@ -92,6 +113,139 @@ const UserDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Booking Details Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl">Reservation Details</DialogTitle>
+          </DialogHeader>
+          {selectedBooking && (() => {
+            const room = getRoomById(selectedBooking.roomId);
+            return (
+              <div className="space-y-6">
+                {/* Room Image and Name */}
+                {room && (
+                  <div className="space-y-2">
+                    <img 
+                      src={room.images[0]} 
+                      alt={room.name} 
+                      className="w-full h-48 object-cover rounded-lg" 
+                    />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-heading text-xl font-semibold">{room.name}</h3>
+                        <p className="text-muted-foreground">{room.tier} Room · Floor {room.floor}</p>
+                      </div>
+                      <Badge variant="outline">${room.pricePerNight}/night</Badge>
+                    </div>
+                  </div>
+                )}
+
+                {/* Booking Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Check-in</p>
+                      <p className="font-medium">{selectedBooking.checkIn}</p>
+                      {selectedBooking.checkInTime && (
+                        <p className="text-xs text-primary">{selectedBooking.checkInTime}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Check-out</p>
+                      <p className="font-medium">{selectedBooking.checkOut}</p>
+                      {selectedBooking.checkOutTime && (
+                        <p className="text-xs text-primary">{selectedBooking.checkOutTime}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Guests</p>
+                      <p className="font-medium">{selectedBooking.guests} guest(s)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Payment Method</p>
+                      <p className="font-medium capitalize">{selectedBooking.paymentMethod.replace('_', ' ')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Badges */}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Booking Status</p>
+                    <Badge className={statusColors[selectedBooking.status]}>
+                      {selectedBooking.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Payment Status</p>
+                    <Badge className={paymentColors[selectedBooking.paymentStatus]}>
+                      {selectedBooking.paymentStatus}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Room Description */}
+                {room && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Room Description</p>
+                    <p className="text-sm text-muted-foreground">{room.description}</p>
+                  </div>
+                )}
+
+                {/* Amenities */}
+                {room && room.amenities.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Amenities</p>
+                    <div className="flex flex-wrap gap-2">
+                      {room.amenities.map((amenity, idx) => (
+                        <Badge key={idx} variant="outline">{amenity}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedBooking.notes && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Notes
+                    </p>
+                    <p className="text-sm text-muted-foreground">{selectedBooking.notes}</p>
+                  </div>
+                )}
+
+                {/* Reference & Total */}
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Booking Reference</p>
+                    <p className="text-sm font-mono">{selectedBooking.id}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-lg font-semibold">Total Amount</p>
+                    <p className="text-2xl font-bold text-primary">${selectedBooking.totalAmount}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

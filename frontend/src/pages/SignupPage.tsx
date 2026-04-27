@@ -10,22 +10,46 @@ import { Hotel } from 'lucide-react';
 
 const SignupPage = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
       toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' });
       return;
     }
-    const result = signup({ name: form.name, email: form.email, phone: form.phone, password: form.password });
-    if (result.success) {
-      toast({ title: 'Account created!', description: 'Welcome to LuxeStay.' });
-      navigate('/dashboard');
-    } else {
-      toast({ title: 'Signup failed', description: result.error, variant: 'destructive' });
+    
+    // Check for rate limit - if error mentions rate limit or 429, show friendly message
+    if (isLoading) {
+      toast({ title: 'Please wait', description: 'Processing your request...', variant: 'default' });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const result = await signup({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+      if (result.success) {
+        toast({ title: 'Account created!', description: 'Welcome to LuxeStay.' });
+        navigate('/dashboard');
+      } else {
+        // Handle rate limit errors specifically
+        const errorMsg = result.error?.toLowerCase() || '';
+        if (errorMsg.includes('429') || errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
+          toast({ 
+            title: 'Please wait', 
+            description: 'Too many signup attempts. Please wait 60 seconds and try again.', 
+            variant: 'destructive' 
+          });
+        } else {
+          toast({ title: 'Signup failed', description: result.error, variant: 'destructive' });
+        }
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,7 +85,9 @@ const SignupPage = () => {
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input id="confirmPassword" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} required />
             </div>
-            <Button type="submit" className="w-full">Create Account</Button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Creating Account...' : 'Create Account'}
+            </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account? <Link to="/login" className="text-primary hover:underline">Sign In</Link>

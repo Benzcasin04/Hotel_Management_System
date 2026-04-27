@@ -6,7 +6,8 @@ export interface User {
   email: string;
   name: string;
   phone?: string;
-  role: 'admin' | 'manager' | 'receptionist' | 'user';
+  role: 'admin' | 'staff' | 'user';
+  is_active?: boolean;
   created_at: string;
 }
 

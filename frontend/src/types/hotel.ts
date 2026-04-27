@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'Admin' | 'Client' | 'Staff';
 
 export interface User {
   id: string;
@@ -7,10 +7,12 @@ export interface User {
   phone: string;
   avatarUrl?: string;
   role: UserRole;
+  isActive: boolean;
   createdAt: string;
 }
 
 export type RoomTier = 'Basic' | 'Standard' | 'Deluxe' | 'Suite' | 'Presidential';
+export type RoomCondition = 'clean' | 'dirty' | 'maintenance';
 
 export interface RoomAmenity {
   id: string;
@@ -29,11 +31,12 @@ export interface Room {
   amenities: string[];
   images: string[];
   isActive: boolean;
+  condition: RoomCondition;
   createdAt: string;
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
+export type PaymentStatus = 'pending' | 'completed' | 'refunded';
 export type PaymentMethod = 'card' | 'cash' | 'bank_transfer';
 
 export interface Booking {
@@ -42,12 +45,15 @@ export interface Booking {
   roomId: string;
   checkIn: string;
   checkOut: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   guests: number;
   status: BookingStatus;
   totalAmount: number;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   notes?: string;
+  guestNotes?: string;
   createdAt: string;
 }
 
@@ -59,5 +65,16 @@ export interface Payment {
   status: PaymentStatus;
   note?: string;
   adjustedBy?: string;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  performedBy: string;
+  targetId: string;
+  details: string;
+  beforeValue?: string;
+  afterValue?: string;
   createdAt: string;
 }

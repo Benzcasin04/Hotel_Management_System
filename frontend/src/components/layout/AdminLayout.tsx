@@ -9,11 +9,20 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const AdminLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
-  if (!user || user.role !== 'admin') return <Navigate to="/login" />;
+  // Wait for auth to finish loading before redirecting
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') return <Navigate to="/login" replace />;
 
   const links = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },

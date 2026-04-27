@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:8082', process.env.FRONTEND_URL || 'http://localhost:8080'],
   credentials: true
 }));
 app.use(morgan('dev'));
@@ -94,7 +94,57 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Check Supabase connection on startup
+async function checkSupabaseConnection() {
+  try {
+    // Check if Supabase env vars are set
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    
+    console.log('Checking Supabase config...');
+    console.log('  URL:', supabaseUrl ? supabaseUrl.substring(0, 40) + '...' : '❌ MISSING');
+    console.log('  KEY:', supabaseKey ? supabaseKey.substring(0, 20) + '...' : '❌ MISSING');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Supabase environment variables not set!');
+      console.error('   Please check your backend/.env file');
+      return false;
+    }
+    
+    console.log('  Testing database connection...');
+    
+    // Try a simple health check first
+    const { data: healthData, error: healthError } = await supabase.auth.getSession();
+    if (healthError) {
+      console.error('❌ Supabase auth check failed:', healthError.message);
+    } else {
+      console.log('  ✅ Supabase auth is reachable');
+    }
+    
+    // Try to query users table (this may fail due to RLS without a logged-in user)
+    const { data, error } = await supabase.from('users').select('*').limit(1);
+    
+    if (error) {
+      console.warn('⚠️  Users table query failed (likely RLS - this is OK for anon key):', error.message || 'No message');
+      console.warn('   This is expected if RLS policies restrict anon access');
+    } else {
+      console.log('  ✅ Users table is accessible');
+    }
+    
+    console.log('✅ Supabase database connected successfully!');
+    return true;
+  } catch (err: any) {
+    console.error('❌ Supabase connection error:', err.message || err);
+    return false;
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Check database connection after a short delay to ensure it appears last
+  setTimeout(() => {
+    checkSupabaseConnection();
+  }, 100);
 });

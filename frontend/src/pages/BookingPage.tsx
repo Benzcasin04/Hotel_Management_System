@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentMethod } from '@/types/hotel';
-import { CalendarCheck, Users, AlertCircle } from 'lucide-react';
+import { CalendarCheck, Users, AlertCircle, Clock } from 'lucide-react';
 
 const BookingPage = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -23,6 +23,8 @@ const BookingPage = () => {
 
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [checkInTime, setCheckInTime] = useState('14:00');
+  const [checkOutTime, setCheckOutTime] = useState('12:00');
   const [guests, setGuests] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [availability, setAvailability] = useState<boolean | null>(null);
@@ -40,21 +42,23 @@ const BookingPage = () => {
 
   const checkAvailability = () => {
     if (!checkIn || !checkOut) return;
-    const available = isRoomAvailable(room.id, checkIn, checkOut);
+    const available = isRoomAvailable(room.id, checkIn, checkOut, checkInTime, checkOutTime);
     setAvailability(available);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nights <= 0) {
       toast({ title: 'Invalid dates', description: 'Check-out must be after check-in.', variant: 'destructive' });
       return;
     }
-    const result = createBooking({
+    const result = await createBooking({
       userId: user.id,
       roomId: room.id,
       checkIn,
       checkOut,
+      checkInTime,
+      checkOutTime,
       guests,
       status: 'pending',
       totalAmount: total,
@@ -104,14 +108,46 @@ const BookingPage = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Check-in</Label>
+                    <Label>Check-in Date</Label>
                     <Input type="date" min={today} value={checkIn} onChange={e => { setCheckIn(e.target.value); setAvailability(null); }} required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Check-out</Label>
+                    <Label>Check-out Date</Label>
                     <Input type="date" min={checkIn || today} value={checkOut} onChange={e => { setCheckOut(e.target.value); setAvailability(null); }} required />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Check-in Time
+                    </Label>
+                    <Input 
+                      type="time" 
+                      value={checkInTime} 
+                      onChange={e => { setCheckInTime(e.target.value); setAvailability(null); }} 
+                      required 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Check-out Time
+                    </Label>
+                    <Input 
+                      type="time" 
+                      value={checkOutTime} 
+                      onChange={e => { setCheckOutTime(e.target.value); setAvailability(null); }} 
+                      required 
+                    />
+                  </div>
+                </div>
+                {checkIn === checkOut && (
+                  <p className="text-xs text-muted-foreground bg-accent/50 p-2 rounded">
+                    Same-day booking selected. Times must not overlap with existing bookings.
+                  </p>
+                )}
 
                 <div className="space-y-2">
                   <Label>Guests</Label>
@@ -126,9 +162,21 @@ const BookingPage = () => {
                 {availability !== null && (
                   <div className={`flex items-center gap-2 rounded-md p-3 text-sm ${availability ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                     {availability ? (
-                      <>✓ Room is available for your dates!</>
+                      <>
+                        ✓ Room is available for your dates!
+                        {checkIn === checkOut && (
+                          <span className="block text-xs mt-1">Time slot {checkInTime} - {checkOutTime} is free.</span>
+                        )}
+                      </>
                     ) : (
-                      <><AlertCircle className="h-4 w-4" /> Room is occupied for these dates. Please choose different dates.</>
+                      <>
+                        <AlertCircle className="h-4 w-4" /> 
+                        {checkIn === checkOut ? (
+                          <>Time slot {checkInTime} - {checkOutTime} overlaps with an existing booking. Please choose a different time.</>
+                        ) : (
+                          <>Room is occupied for these dates. Please choose different dates.</>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

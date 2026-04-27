@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 import { sendSuccess, sendError } from '../utils/response';
+import { createAuditLog } from './audit.controller';
 
 // Get all payments (Admin only)
 export const getAllPayments = async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('payments')
       .select(`
         *,
@@ -35,7 +36,7 @@ export const getUserPayments = async (req: Request, res: Response) => {
     }
 
     // First get user's booking IDs
-    const { data: userBookings, error: bookingError } = await supabase
+    const { data: userBookings, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .select('id')
       .eq('user_id', userId);
@@ -44,7 +45,7 @@ export const getUserPayments = async (req: Request, res: Response) => {
 
     const bookingIds = userBookings?.map(b => b.id) || [];
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('payments')
       .select(`
         *,
@@ -71,7 +72,7 @@ export const getPaymentById = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
     const userRole = (req as any).user?.role;
     
-    let query = supabase
+    let query = supabaseAdmin
       .from('payments')
       .select(`
         *,
@@ -86,7 +87,7 @@ export const getPaymentById = async (req: Request, res: Response) => {
     // Users can only see their own payments, admins can see all
     if (userRole !== 'admin') {
       // First get user's booking IDs
-      const { data: userBookings, error: bookingError } = await supabase
+      const { data: userBookings, error: bookingError } = await supabaseAdmin
         .from('bookings')
         .select('id')
         .eq('user_id', userId);
@@ -120,7 +121,7 @@ export const createPayment = async (req: Request, res: Response) => {
     const userRole = (req as any).user?.role;
     
     if (userRole !== 'admin') {
-      const { data: booking, error: bookingError } = await supabase
+      const { data: booking, error: bookingError } = await supabaseAdmin
         .from('bookings')
         .select('user_id, total_amount')
         .eq('id', paymentData.booking_id)
@@ -132,7 +133,7 @@ export const createPayment = async (req: Request, res: Response) => {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('payments')
       .insert([paymentData])
       .select(`
@@ -155,7 +156,9 @@ export const updatePayment = async (req: Request, res: Response) => {
     const { id } = req.params;
     const paymentData = req.body;
     
-    const { data, error } = await supabase
+    console.log('Updating payment:', id, 'with data:', paymentData);
+    
+    const { data, error } = await supabaseAdmin
       .from('payments')
       .update(paymentData)
       .eq('id', id)
@@ -169,22 +172,33 @@ export const updatePayment = async (req: Request, res: Response) => {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error updating payment:', error);
+      throw error;
+    }
+
+    console.log('Payment updated successfully:', data);
 
     // If payment is completed, update booking payment status
-    if (paymentData.status === 'completed') {
-      await supabase
+    if (paymentData.status === 'completed' || paymentData.status === 'paid') {
+      console.log('Updating booking payment status for booking:', data.booking_id);
+      const { error: bookingError } = await supabaseAdmin
         .from('bookings')
         .update({ 
           payment_status: 'paid',
           status: 'confirmed'
         })
         .eq('id', data.booking_id);
+      
+      if (bookingError) {
+        console.error('Error updating booking:', bookingError);
+      }
     }
 
     sendSuccess(res, data, 'Payment updated successfully');
   } catch (error: any) {
-    sendError(res, error.message || 'Failed to update payment');
+    console.error('Update payment error:', error);
+    sendError(res, error.message || 'Failed to update payment', 400);
   }
 };
 
@@ -193,9 +207,17 @@ export const processRefund = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
+    const adminId = (req as any).user?.id;
+    const adminName = (req as any).user?.email || 'Admin';
     const userId = (req as any).user?.id;
     
-    const { data, error } = await supabase
+    const { data: prevData } = await supabaseAdmin
+      .from('payments')
+      .select('amount, status')
+      .eq('id', id)
+      .single();
+    
+    const { data, error } = await supabaseAdmin
       .from('payments')
       .update({ 
         status: 'refunded',
@@ -203,20 +225,24 @@ export const processRefund = async (req: Request, res: Response) => {
         adjusted_by: userId
       })
       .eq('id', id)
-      .select(`
-        *,
-        bookings: booking_id (
-          id,
-          users: user_id (id, name, email),
-          rooms: room_id (id, name, tier)
-        )
-      `)
+      .select()
       .single();
-
+    
     if (error) throw error;
+    
+    // Log audit
+    await createAuditLog(
+      'Processed Refund',
+      adminId,
+      adminName,
+      `Payment #${id.slice(0, 8)}`,
+      `Refunded $${prevData?.amount || 0} - ${note || 'No note provided'}`,
+      'warning'
+    );
+    
 
     // Update booking status to cancelled
-    await supabase
+    await supabaseAdmin
       .from('bookings')
       .update({ 
         status: 'cancelled',

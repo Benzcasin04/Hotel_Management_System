@@ -1,10 +1,8 @@
-/* stylelint-disable at-rule-no-unknown */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* stylelint-enable at-rule-no-unknown */
 
 @layer base {
   :root {
@@ -31,6 +29,12 @@
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
     --border: 40 15% 88%;
     --input: 40 15% 88%;
@@ -80,13 +84,11 @@
 }
 
 @layer base {
-  /* stylelint-disable at-rule-no-unknown */
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
-    /* stylelint-enable at-rule-no-unknown */
     font-family: var(--font-body);
   }
   h1, h2, h3, h4, h5, h6 {

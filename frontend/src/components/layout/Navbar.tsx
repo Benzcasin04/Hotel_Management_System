@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Hotel, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { Hotel, Menu, X, User, LogOut, LayoutDashboard, CalendarCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,13 @@ const Navbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const getDashboardLink = () => {
+    if (!user) return '/dashboard';
+    if (user.role === 'admin') return '/admin';
+    if (user.role === 'staff') return '/staff';
+    return '/dashboard';
+  };
+
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -33,7 +40,6 @@ const Navbar = () => {
           <span className="font-heading text-xl font-bold text-foreground">LuxeStay</span>
         </Link>
 
-        {/* Desktop */}
         <div className="hidden items-center gap-1 md:flex">
           {publicLinks.map(link => (
             <Link
@@ -57,13 +63,20 @@ const Navbar = () => {
                 <Button variant="ghost" className="gap-2">
                   <User className="h-4 w-4" />
                   <span className="text-sm">{user.name}</span>
+                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary capitalize">{user.role}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                  <Link to={user.role === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2">
+                  <Link to={getDashboardLink()} className="flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4" />
+                    My Reservations
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -91,13 +104,11 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile toggle */}
         <button className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
         <div className="border-t border-border bg-card px-4 pb-4 pt-2 md:hidden">
           {publicLinks.map(link => (
@@ -116,7 +127,7 @@ const Navbar = () => {
             {isAuthenticated && user ? (
               <>
                 <Button variant="ghost" asChild className="justify-start">
-                  <Link to={user.role === 'admin' ? '/admin' : '/dashboard'} onClick={() => setMobileOpen(false)}>
+                  <Link to={getDashboardLink()} onClick={() => setMobileOpen(false)}>
                     Dashboard
                   </Link>
                 </Button>

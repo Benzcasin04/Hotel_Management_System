@@ -6,16 +6,24 @@ import {
   updateUser,
   deleteUser
 } from '../controllers/user.controller';
+import { authenticate, requireAdmin, requireAdminOrStaff } from '../middleware/auth';
 
 const router = Router();
 
-// Public routes (with auth middleware)
+// All user routes require authentication
+router.use(authenticate);
+
+// Current user profile
 router.get('/me', getCurrentUser);
 
-// Admin only routes
-router.get('/', getAllUsers);
-router.post('/', createUser);
-router.put('/:id', updateUser);
-router.delete('/:id', deleteUser);
+// Admin and Staff can view all users
+router.get('/', requireAdminOrStaff, getAllUsers);
+
+// Only Admin can create/delete users
+router.post('/', requireAdmin, createUser);
+router.delete('/:id', requireAdmin, deleteUser);
+
+// Admin and Staff can update users
+router.put('/:id', requireAdminOrStaff, updateUser);
 
 export default router;
