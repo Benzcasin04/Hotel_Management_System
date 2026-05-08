@@ -14,16 +14,23 @@ interface HotelContextType {
   toggleRoomActive: (id: string) => Promise<void>;
   createBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
+  updateBookingForStaff: (id: string, status: BookingStatus) => Promise<void>;
+  updateBookingPaymentStatus: (id: string, paymentStatus: PaymentStatus) => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
   deleteBookingPermanently: (id: string) => Promise<void>;
   isRoomAvailable: (roomId: string, checkIn: string, checkOut: string, checkInTime?: string, checkOutTime?: string, excludeBookingId?: string) => boolean;
+  createPayment: (bookingId: string, amount: number, method: PaymentMethod) => Promise<Payment>;
+  createPaymentAndUpdateBooking: (bookingId: string, amount: number, method: PaymentMethod) => Promise<Payment>;
   updatePaymentStatus: (paymentId: string, status: PaymentStatus, note?: string, adjustedBy?: string) => Promise<void>;
   adjustPaymentAmount: (paymentId: string, amount: number, note?: string, adjustedBy?: string) => Promise<void>;
   processRefund: (paymentId: string, note?: string) => Promise<void>;
   getRoomById: (id: string) => Room | undefined;
   getBookingsByUser: (userId: string) => Booking[];
+  getDisplayPaymentStatus: (booking: Booking) => PaymentStatus;
   refreshUsers: () => Promise<void>;
   updateRoomCondition: (id: string, condition: Room['condition']) => Promise<void>;
+  fetchPayments: () => Promise<void>;
+  getAuthToken: () => Promise<string | undefined>;
 }
 
 const HotelContext = createContext<HotelContextType | undefined>(undefined);
@@ -94,7 +101,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch rooms from backend on mount
   const fetchRooms = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/rooms');
+      const response = await fetch('http://localhost:3007/api/rooms');
       if (!response.ok) throw new Error('Failed to fetch rooms');
       const data = await response.json();
       const mappedRooms = (data.data || []).map(mapRoomFromDB);
@@ -120,8 +127,8 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Use /my endpoint for regular users, / for admin/staff
       const endpoint = isAdminOrStaff 
-        ? 'http://localhost:3000/api/bookings' 
-        : 'http://localhost:3000/api/bookings/my';
+        ? 'http://localhost:3007/api/bookings' 
+        : 'http://localhost:3007/api/bookings/my';
         
       const response = await fetch(endpoint, {
         headers: {
@@ -153,8 +160,8 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Use /my endpoint for regular users, / for admin/staff
       const endpoint = isAdminOrStaff 
-        ? 'http://localhost:3000/api/payments' 
-        : 'http://localhost:3000/api/payments/my';
+        ? 'http://localhost:3007/api/payments' 
+        : 'http://localhost:3007/api/payments/my';
         
       const response = await fetch(endpoint, {
         headers: {
@@ -193,7 +200,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       
       console.log('Fetching users with token:', token ? 'present' : 'missing');
-      const response = await fetch('http://localhost:3000/api/users', {
+      const response = await fetch('http://localhost:3007/api/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -225,9 +232,19 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     fetchRooms();
     fetchBookings();
-    fetchPayments();
     fetchUsers();
-  }, [fetchRooms, fetchBookings, fetchPayments, fetchUsers]);
+    
+    // Only fetch payments for admin/staff users, not for regular users
+    const cachedUser = localStorage.getItem('cached-user');
+    if (cachedUser) {
+      const userData = JSON.parse(cachedUser);
+      const role = userData.role?.toLowerCase();
+      const isAdminOrStaff = role === 'admin' || role === 'staff';
+      if (isAdminOrStaff) {
+        fetchPayments();
+      }
+    }
+  }, [fetchRooms, fetchBookings, fetchUsers, fetchPayments]);
 
   const addRoom = useCallback(async (room: Omit<Room, 'id' | 'createdAt'>) => {
     try {
@@ -244,7 +261,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         condition: room.condition,
       };
 
-      const response = await fetch('http://localhost:3000/api/rooms', {
+      const response = await fetch('http://localhost:3007/api/rooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -287,7 +304,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
       if (updates.condition !== undefined) updateData.condition = updates.condition;
 
-      const response = await fetch(`http://localhost:3000/api/rooms/${id}`, {
+      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -311,7 +328,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const token = await getAuthToken();
       
-      const response = await fetch(`http://localhost:3000/api/rooms/${id}`, {
+      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -337,7 +354,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteRoom = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/rooms/${id}`, {
+      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -395,7 +412,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         guest_notes: booking.guestNotes,
       };
 
-      const response = await fetch('http://localhost:3000/api/bookings', {
+      const response = await fetch('http://localhost:3007/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -413,19 +430,16 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newBooking = mapBookingFromDB(data.data);
       setBookings(prev => [...prev, newBooking]);
       
-      // Also refresh payments to get the newly created payment
-      await fetchPayments();
-      
       return { success: true };
     } catch (error: any) {
       console.error('Error creating booking:', error);
       return { success: false, error: error.message || 'Failed to create booking' };
     }
-  }, [fetchPayments]);
+  }, []);
 
   const updateBookingStatus = useCallback(async (id: string, status: BookingStatus) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/bookings/${id}`, {
+      const response = await fetch(`http://localhost:3007/api/bookings/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -445,9 +459,67 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const updateBookingForStaff = useCallback(async (id: string, status: BookingStatus) => {
+    try {
+      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update booking');
+      
+      const data = await response.json();
+      const updatedBooking = mapBookingFromDB(data.data);
+      setBookings(prev => prev.map(b => b.id === id ? updatedBooking : b));
+    } catch (error) {
+      console.error('Error updating booking for staff:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateBookingPaymentStatus = useCallback(async (id: string, paymentStatus: PaymentStatus) => {
+    try {
+      // Get current booking to preserve other fields
+      const currentBooking = bookings.find(b => b.id === id);
+      if (!currentBooking) {
+        throw new Error('Booking not found');
+      }
+      
+      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`,
+        },
+        body: JSON.stringify({ 
+          status: currentBooking.status,
+          payment_status: paymentStatus 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Backend error:', errorData);
+        throw new Error(errorData.error || 'Failed to update booking payment status');
+      }
+      
+      const data = await response.json();
+      const updatedBooking = mapBookingFromDB(data.data);
+      
+      setBookings(prev => prev.map(b => b.id === id ? updatedBooking : b));
+    } catch (error) {
+      console.error('Error updating booking payment status:', error);
+      throw error;
+    }
+  }, [bookings]);
+
   const cancelBooking = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/bookings/${id}`, {
+      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -465,7 +537,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteBookingPermanently = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/bookings/${id}/permanent`, {
+      const response = await fetch(`http://localhost:3007/api/bookings/${id}/permanent`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -481,10 +553,42 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const createPayment = useCallback(async (bookingId: string, amount: number, method: PaymentMethod) => {
+    try {
+      const userId = await getCurrentUserId();
+      const response = await fetch('http://localhost:3007/api/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          amount,
+          method,
+          status: 'pending',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create payment');
+      
+      const data = await response.json();
+      const newPayment = mapPaymentFromDB(data.data);
+      
+      setPayments(prev => [...prev, newPayment]);
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, paymentStatus: 'pending' } : b));
+      
+      return newPayment;
+    } catch (error) {
+      console.error('Error creating payment:', error);
+      throw error;
+    }
+  }, []);
+
   const updatePaymentStatus = useCallback(async (paymentId: string, status: PaymentStatus, note?: string, _adjustedBy?: string) => {
     try {
       const userId = await getCurrentUserId();
-      const response = await fetch(`http://localhost:3000/api/payments/${paymentId}`, {
+      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -509,7 +613,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const adjustPaymentAmount = useCallback(async (paymentId: string, amount: number, note?: string, _adjustedBy?: string) => {
     try {
       const userId = await getCurrentUserId();
-      const response = await fetch(`http://localhost:3000/api/payments/${paymentId}`, {
+      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -533,7 +637,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const processRefund = useCallback(async (paymentId: string, note?: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/payments/${paymentId}/refund`, {
+      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}/refund`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -555,19 +659,53 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const createPaymentAndUpdateBooking = useCallback(async (bookingId: string, amount: number, method: PaymentMethod) => {
+    try {
+      // Create payment record first
+      const payment = await createPayment(bookingId, amount, method);
+      
+      // Update booking payment status to 'paid' (database constraint allows this)
+      await updateBookingPaymentStatus(bookingId, 'paid');
+      
+      // Update booking status to pending (waiting for admin approval)
+      await updateBookingStatus(bookingId, 'pending');
+      
+      return payment;
+    } catch (error) {
+      console.error('Error in combined payment and booking update:', error);
+      throw error;
+    }
+  }, [createPayment, updateBookingPaymentStatus, updateBookingStatus]);
+
   const getRoomById = useCallback((id: string) => rooms.find(r => r.id === id), [rooms]);
 
   const getBookingsByUser = useCallback((userId: string) => bookings.filter(b => b.userId === userId), [bookings]);
+
+  // Helper function to get display payment status
+  const getDisplayPaymentStatus = useCallback((booking: Booking) => {
+    // Show 'unpaid' for initial bookings, 'pending' after payment confirmation
+    // If actual payment status is 'unpaid', show 'unpaid'
+    // If actual payment status is 'paid' but booking is still pending, show 'pending'
+    if (booking.paymentStatus === 'unpaid') {
+      return 'unpaid';
+    }
+    if (booking.paymentStatus === 'paid' && booking.status === 'pending') {
+      return 'pending';
+    }
+    return booking.paymentStatus;
+  }, []);
 
   return (
     <HotelContext.Provider value={{
       rooms, bookings, payments, users,
       addRoom, updateRoom, deleteRoom, toggleRoomActive,
-      createBooking, updateBookingStatus, cancelBooking, deleteBookingPermanently, isRoomAvailable,
-      updatePaymentStatus, adjustPaymentAmount, processRefund,
-      getRoomById, getBookingsByUser,
+      createBooking, updateBookingStatus, updateBookingForStaff, updateBookingPaymentStatus, cancelBooking, deleteBookingPermanently, isRoomAvailable,
+      createPayment, createPaymentAndUpdateBooking, updatePaymentStatus, adjustPaymentAmount, processRefund,
+      getRoomById, getBookingsByUser, getDisplayPaymentStatus,
       refreshUsers: fetchUsers,
       updateRoomCondition,
+      fetchPayments,
+      getAuthToken,
     }}>
       {children}
     </HotelContext.Provider>

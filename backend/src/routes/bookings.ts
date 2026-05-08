@@ -5,6 +5,7 @@ import {
   getBookingById,
   createBooking,
   updateBooking,
+  updateMyBooking,
   cancelBooking,
   deleteBooking
 } from '../controllers/booking.controller';
@@ -19,6 +20,9 @@ router.use(authenticate);
 router.get('/my', getUserBookings);
 router.get('/:id', getBookingById);
 router.post('/', createBooking);
+
+// User can update their own booking status
+router.put('/:id/status', updateMyBooking);
 
 // Admin and Staff can view all bookings
 router.get('/', requireAdminOrStaff, getAllBookings);

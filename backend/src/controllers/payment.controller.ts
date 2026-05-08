@@ -133,6 +133,44 @@ export const createPayment = async (req: Request, res: Response) => {
       }
     }
 
+    // Check if payment already exists for this booking (any status)
+    const { data: existingPayment, error: existingError } = await supabaseAdmin
+      .from('payments')
+      .select('*')
+      .eq('booking_id', paymentData.booking_id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    // If payment already exists, return the existing one instead of creating duplicate
+    if (existingPayment) {
+      // Update the existing payment with new method if provided
+      if (paymentData.method && paymentData.method !== existingPayment.method) {
+        const { data: updatedPayment, error: updateError } = await supabaseAdmin
+          .from('payments')
+          .update({ 
+            method: paymentData.method,
+            status: 'pending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingPayment.id)
+          .select(`
+            *,
+            bookings: booking_id (id, total_amount)
+          `)
+          .single();
+
+        if (updateError) throw updateError;
+        
+        sendSuccess(res, updatedPayment, 'Payment updated successfully', 200);
+        return;
+      }
+
+      // Return existing payment without modification
+      sendSuccess(res, existingPayment, 'Payment already exists', 200);
+      return;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('payments')
       .insert([paymentData])
@@ -143,6 +181,25 @@ export const createPayment = async (req: Request, res: Response) => {
       .single();
 
     if (error) throw error;
+
+    // Update booking payment status to 'paid' when payment is created (database constraint)
+    if (data && paymentData.status === 'pending') {
+      console.log('Updating booking payment status to paid for booking:', paymentData.booking_id);
+      console.log('Payment data received:', paymentData);
+      
+      const { error: bookingError } = await supabaseAdmin
+        .from('bookings')
+        .update({ 
+          payment_status: 'paid'
+        })
+        .eq('id', paymentData.booking_id);
+      
+      if (bookingError) {
+        console.error('Error updating booking payment status:', bookingError);
+      } else {
+        console.log('Booking payment status updated to paid successfully for booking:', paymentData.booking_id);
+      }
+    }
 
     sendSuccess(res, data, 'Payment created successfully', 201);
   } catch (error: any) {
@@ -179,7 +236,7 @@ export const updatePayment = async (req: Request, res: Response) => {
 
     console.log('Payment updated successfully:', data);
 
-    // If payment is completed, update booking payment status
+    // If payment is completed or pending, update booking payment status
     if (paymentData.status === 'completed' || paymentData.status === 'paid') {
       console.log('Updating booking payment status for booking:', data.booking_id);
       const { error: bookingError } = await supabaseAdmin
@@ -192,6 +249,20 @@ export const updatePayment = async (req: Request, res: Response) => {
       
       if (bookingError) {
         console.error('Error updating booking:', bookingError);
+      }
+    } else if (paymentData.status === 'pending') {
+      console.log('Updating booking payment status to paid for booking:', data.booking_id);
+      const { error: bookingError } = await supabaseAdmin
+        .from('bookings')
+        .update({ 
+          payment_status: 'paid'
+        })
+        .eq('id', data.booking_id);
+      
+      if (bookingError) {
+        console.error('Error updating booking payment status:', bookingError);
+      } else {
+        console.log('Booking payment status updated to paid successfully for booking:', data.booking_id);
       }
     }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useHotel } from '@/contexts/HotelContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,17 +9,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { PaymentMethod } from '@/types/hotel';
-import { CalendarCheck, Users, AlertCircle, Clock } from 'lucide-react';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { PaymentMethod, PaymentStatus } from '@/types/hotel';
+import { CalendarCheck, Users, AlertCircle, Clock, CreditCard } from 'lucide-react';
 
 const BookingPage = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { getRoomById, createBooking, isRoomAvailable } = useHotel();
   const { user } = useAuth();
+  const { createNotification } = useNotifications();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const room = getRoomById(roomId || '');
+
+  // Scroll to top when page loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Check if room is in a condition that prevents booking
+  const isRoomBookable = room?.condition === 'clean' || !room?.condition;
+  const roomConditionMessage = room?.condition === 'dirty' 
+    ? 'This room is currently dirty and unavailable for booking.' 
+    : room?.condition === 'maintenance' 
+    ? 'This room is under maintenance and unavailable for booking.' 
+    : '';
 
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -28,6 +43,7 @@ const BookingPage = () => {
   const [guests, setGuests] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [availability, setAvailability] = useState<boolean | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!room || !user) {
     return (
@@ -52,6 +68,19 @@ const BookingPage = () => {
       toast({ title: 'Invalid dates', description: 'Check-out must be after check-in.', variant: 'destructive' });
       return;
     }
+    // Prevent booking if room is dirty or under maintenance
+    if (!isRoomBookable) {
+      toast({ 
+        title: 'Room Unavailable', 
+        description: roomConditionMessage, 
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
     const result = await createBooking({
       userId: user.id,
       roomId: room.id,
@@ -62,16 +91,31 @@ const BookingPage = () => {
       guests,
       status: 'pending',
       totalAmount: total,
-      paymentStatus: 'unpaid',
+      paymentStatus: 'unpaid' as PaymentStatus,
       paymentMethod,
     });
+    setIsProcessing(false);
+    
     if (result.success) {
       toast({ title: 'Booking Created!', description: `Booking ref confirmed. Total: $${total}` });
+      
+      // Create notification for admin/staff
+      createNotification({
+        userId: null, // null means all admins/staff see it
+        title: 'New Booking Received',
+        message: `${user.name} booked ${room.name} for ${nights} night(s) - $${total}`,
+        type: 'booking',
+        relatedId: undefined, // Booking ID not returned from createBooking
+        read: false,
+      });
+      
       navigate('/dashboard');
     } else {
+      setIsProcessing(false);
       toast({ title: 'Booking Failed', description: result.error, variant: 'destructive' });
     }
   };
+
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -80,6 +124,19 @@ const BookingPage = () => {
       <div className="container mx-auto max-w-4xl px-4">
         <h1 className="font-heading text-3xl font-bold text-foreground">Book: {room.name}</h1>
         <Badge className="mt-2">{room.tier}</Badge>
+
+        {/* Room condition warning */}
+        {!isRoomBookable && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">Room Unavailable</span>
+            </div>
+            <p className="mt-1 text-sm">{roomConditionMessage}</p>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           {/* Room info */}
@@ -182,16 +239,31 @@ const BookingPage = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label>Payment Method (Simulated)</Label>
+                  <Label>Payment Method</Label>
                   <Select value={paymentMethod} onValueChange={v => setPaymentMethod(v as PaymentMethod)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="card">Credit Card</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Credit / Debit Card
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="cash">Cash on Arrival</SelectItem>
                       <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Payment Method Notice */}
+                {paymentMethod && nights <= 0 && (
+                  <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-sm text-amber-700 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Please select check-in and check-out dates first to proceed with booking.
+                    </p>
+                  </div>
+                )}
 
                 {nights > 0 && (
                   <div className="rounded-md bg-muted p-4">
@@ -203,9 +275,23 @@ const BookingPage = () => {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full" size="lg" disabled={availability === false || nights <= 0}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Confirm Booking
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg" 
+                  disabled={!isRoomBookable || availability === false || nights <= 0 || isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Proceed to Payment
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>

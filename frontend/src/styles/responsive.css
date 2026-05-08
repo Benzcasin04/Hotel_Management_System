@@ -1,0 +1,393 @@
+/* Responsive Design System */
+
+/* Breakpoints */
+:root {
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* Base responsive container */
+.responsive-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Mobile First Approach */
+@media (max-width: 640px) {
+  /* Hide/Show utilities */
+  .hidden-mobile {
+    display: none !important;
+  }
+  
+  .block-mobile {
+    display: block !important;
+  }
+  
+  .flex-mobile {
+    display: flex !important;
+  }
+  
+  .grid-mobile {
+    display: grid !important;
+  }
+  
+  /* Layout adjustments */
+  .container-mobile {
+    padding: 0 0.75rem !important;
+    max-width: 100% !important;
+  }
+  
+  /* Text sizing */
+  .text-xs-mobile {
+    font-size: 0.75rem !important;
+  }
+  
+  .text-sm-mobile {
+    font-size: 0.875rem !important;
+  }
+  
+  .text-base-mobile {
+    font-size: 1rem !important;
+  }
+  
+  .text-lg-mobile {
+    font-size: 1.125rem !important;
+  }
+  
+  .text-xl-mobile {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Spacing */
+  .p-2-mobile {
+    padding: 0.5rem !important;
+  }
+  
+  .p-4-mobile {
+    padding: 1rem !important;
+  }
+  
+  .m-2-mobile {
+    margin: 0.5rem !important;
+  }
+  
+  .m-4-mobile {
+    margin: 1rem !important;
+  }
+  
+  /* Flex utilities */
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+  
+  .items-start-mobile {
+    align-items: flex-start !important;
+  }
+  
+  .items-center-mobile {
+    align-items: center !important;
+  }
+  
+  .justify-between-mobile {
+    justify-content: space-between !important;
+  }
+  
+  .justify-center-mobile {
+    justify-content: center !important;
+  }
+  
+  /* Width utilities */
+  .w-full-mobile {
+    width: 100% !important;
+  }
+  
+  .w-auto-mobile {
+    width: auto !important;
+  }
+  
+  .w-12-mobile {
+    width: 3rem !important;
+  }
+  
+  .h-12-mobile {
+    height: 3rem !important;
+  }
+  
+  .w-20-mobile {
+    width: 5rem !important;
+  }
+  
+  .h-20-mobile {
+    height: 5rem !important;
+  }
+  
+  /* Height utilities */
+  .h-auto-mobile {
+    height: auto !important;
+  }
+  
+  /* Card adjustments */
+  .card-mobile {
+    border-radius: 0.5rem !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Button adjustments */
+  .btn-mobile {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.875rem !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  .btn-sm-mobile {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.375rem !important;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .hidden-tablet {
+    display: none !important;
+  }
+  
+  .block-tablet {
+    display: block !important;
+  }
+  
+  .flex-tablet {
+    display: flex !important;
+  }
+  
+  .container-tablet {
+    padding: 0 2rem;
+    max-width: 100%;
+  }
+  
+  .grid-cols-1-tablet {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-2-tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .text-sm-tablet {
+    font-size: 0.875rem !important;
+  }
+  
+  .text-base-tablet {
+    font-size: 1rem !important;
+  }
+  
+  .text-lg-tablet {
+    font-size: 1.125rem !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+  .hidden-desktop {
+    display: none !important;
+  }
+  
+  .container-desktop {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  
+  .grid-cols-3-desktop {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-4-desktop {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Responsive Grid System */
+.responsive-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Responsive Cards */
+.responsive-card {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .responsive-card {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin: 0.25rem 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Responsive Navigation */
+.responsive-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+@media (max-width: 640px) {
+  .responsive-nav {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* Responsive Tables */
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .responsive-table table {
+    font-size: 0.875rem;
+  }
+  
+  .responsive-table th,
+  .responsive-table td {
+    padding: 0.5rem;
+  }
+}
+
+/* Responsive Forms */
+.responsive-form {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .responsive-form {
+    gap: 0.75rem;
+  }
+  
+  .responsive-form input,
+  .responsive-form select,
+  .responsive-form textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Responsive Images */
+.responsive-img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive Typography */
+.responsive-text {
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .responsive-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
+/* Responsive Spacing */
+.responsive-spacing {
+  padding: 2rem;
+}
+
+@media (max-width: 640px) {
+  .responsive-spacing {
+    padding: 1rem;
+  }
+}
+
+/* Responsive Buttons */
+.responsive-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 640px) {
+  .responsive-button {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Responsive Dialogs */
+.responsive-dialog {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .responsive-dialog {
+    max-width: 95vw;
+    max-height: 95vh;
+    margin: 0.25rem;
+    width: calc(100vw - 0.5rem);
+  }
+}
+
+/* Responsive Sidebar */
+.responsive-sidebar {
+  width: 250px;
+  transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .responsive-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+  }
+  
+  .responsive-sidebar.open {
+    transform: translateX(0);
+  }
+}

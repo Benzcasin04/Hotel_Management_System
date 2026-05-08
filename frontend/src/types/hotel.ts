@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'Client' | 'Staff';
+export type UserRole = 'admin' | 'user' | 'staff';
 
 export interface User {
   id: string;
@@ -36,7 +36,7 @@ export interface Room {
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
-export type PaymentStatus = 'pending' | 'completed' | 'refunded';
+export type PaymentStatus = 'unpaid' | 'pending' | 'completed' | 'paid' | 'refunded';
 export type PaymentMethod = 'card' | 'cash' | 'bank_transfer';
 
 export interface Booking {
@@ -77,4 +77,18 @@ export interface AuditLog {
   beforeValue?: string;
   afterValue?: string;
   createdAt: string;
+}
+
+export type NotificationType = 'booking' | 'payment' | 'guest_note' | 'contact_message' | 'system';
+
+export interface Notification {
+  id: string;
+  userId: string | null; // null means for all admins/staff
+  title: string;
+  message: string;
+  type: NotificationType;
+  relatedId?: string; // bookingId, paymentId, etc.
+  read: boolean;
+  createdAt: string;
+  hiddenFor?: string[]; // Array of user IDs who have hidden this notification
 }

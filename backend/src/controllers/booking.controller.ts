@@ -158,7 +158,50 @@ export const createBooking = async (req: Request, res: Response) => {
   }
 };
 
-// Update booking
+// Update booking (for users updating their own booking)
+export const updateMyBooking = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    const bookingData = req.body;
+    
+    // Users can only update their own bookings
+    const { data: booking, error: fetchError } = await supabaseAdmin
+      .from('bookings')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (booking.user_id !== userId) {
+      return sendError(res, 'Unauthorized to update this booking', 403);
+    }
+    
+    console.log('Updating user booking with data:', bookingData);
+    
+    const { data, error } = await supabaseAdmin
+      .from('bookings')
+      .update(bookingData)
+      .eq('id', id)
+      .select(`
+        *,
+        rooms: room_id (id, name, tier, price_per_night)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Supabase error updating user booking:', error);
+      throw error;
+    }
+
+    sendSuccess(res, data, 'Booking updated successfully');
+  } catch (error: any) {
+    console.error('Update user booking error:', error);
+    sendError(res, error.message || 'Failed to update booking', 400);
+  }
+};
+
+// Update booking (for admins/staff updating any booking)
 export const updateBooking = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -181,6 +224,8 @@ export const updateBooking = async (req: Request, res: Response) => {
       }
     }
 
+    console.log('Updating booking with data:', bookingData);
+    
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .update(bookingData)
@@ -191,11 +236,15 @@ export const updateBooking = async (req: Request, res: Response) => {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error updating booking:', error);
+      throw error;
+    }
 
     sendSuccess(res, data, 'Booking updated successfully');
   } catch (error: any) {
-    sendError(res, error.message || 'Failed to update booking');
+    console.error('Update booking error:', error);
+    sendError(res, error.message || 'Failed to update booking', 400);
   }
 };
 

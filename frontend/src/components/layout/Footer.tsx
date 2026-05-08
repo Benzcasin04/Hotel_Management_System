@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Hotel, Mail, Phone, MapPin } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <Hotel className="h-6 w-6 text-primary" />
+              <Building2 className="h-6 w-6 text-primary" />
               <span className="font-heading text-lg font-bold">LuxeStay</span>
             </div>
             <p className="text-sm text-secondary-foreground/70">

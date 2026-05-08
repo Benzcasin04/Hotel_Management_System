@@ -8,7 +8,8 @@ import morgan from 'morgan';
 import { supabase, supabaseAdmin } from './config/supabase';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Force port 3007 for definitive solution (override env vars)
+const PORT = 3007;
 
 // Middleware
 app.use(helmet());

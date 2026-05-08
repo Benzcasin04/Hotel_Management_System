@@ -3,9 +3,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { HotelProvider } from "@/contexts/HotelContext";
+import { AuthProvider } from '@/contexts/AuthContext';
+import { HotelProvider } from '@/contexts/HotelContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { SupabaseStatus } from "@/components/SupabaseStatus";
+import '@/styles/responsive.css';
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -25,6 +27,7 @@ import AdminBookings from "@/pages/admin/AdminBookings";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminMessages from "@/pages/admin/AdminMessages";
 import StaffDashboard from "@/pages/staff/StaffDashboard";
 import StaffFrontDesk from "@/pages/staff/StaffFrontDesk";
 import StaffHousekeeping from "@/pages/staff/StaffHousekeeping";
@@ -37,7 +40,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <HotelProvider>
-        <TooltipProvider>
+        <NotificationProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -59,6 +63,7 @@ const App = () => (
                 <Route path="/admin/bookings" element={<AdminBookings />} />
                 <Route path="/admin/payments" element={<AdminPayments />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/messages" element={<AdminMessages />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
               <Route element={<StaffLayout />}>
@@ -70,8 +75,9 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
-        <SupabaseStatus />
+          </TooltipProvider>
+          <SupabaseStatus />
+        </NotificationProvider>
       </HotelProvider>
     </AuthProvider>
   </QueryClientProvider>
