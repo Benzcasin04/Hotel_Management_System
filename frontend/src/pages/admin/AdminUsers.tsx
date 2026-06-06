@@ -10,71 +10,75 @@ import { supabase } from '@/lib/supabase';
 import { UserRole, User } from '@/types/hotel';
 import {
   Shield, ShieldOff, Plus, Loader2, Pencil, Trash2,
-  Search, ArrowRight, X, Users, UserCheck, UserX, Crown,
+  Search, ArrowRight, X, Users, UserCheck, Crown,
 } from 'lucide-react';
 
-// ── Design Tokens ──────────────────────────────────────────────
-const GOLD        = '#c4a05a';
-const GOLD_LIGHT  = '#d4b06a';
-const GOLD_PALE   = 'rgba(196,160,90,0.10)';
-const GOLD_BORDER = 'rgba(196,160,90,0.22)';
+// API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3007';
 
-const PAGE_BG      = '#f0ebe0';
-const PANEL_BG     = '#faf7f1';
-const DARK_BG      = '#1e1b14';
-const DARK_MID     = '#272319';
+// ── Design tokens — balanced warm palette ─────────────────
+const GOLD    = '#c4a05a';
+const BORDER  = 'rgba(196,160,90,0.15)';
+const SURFACE = '#ffffff';
+const TEXT    = '#1a1612';
+const MUTED   = '#8a7d6e';
+const CREAM   = '#faf8f4';
+const DARK    = '#2c2418';
 
-const TEXT_DARK    = '#1e1b14';
-const TEXT_WARM    = '#3d3526';
-const TEXT_MUTED   = 'rgba(61,53,38,0.48)';
-const TEXT_LIGHT   = '#f0ead6';
-const TEXT_LIGHT_MUTED = 'rgba(184,173,150,0.55)';
-
-const BORDER_LIGHT = 'rgba(61,53,38,0.10)';
-const BORDER_DARK  = 'rgba(240,234,214,0.08)';
-const DIVIDER      = 'rgba(196,160,90,0.15)';
-
-// Role palette — keys match lowercase backend values
-const ROLE_STYLES: Record<string, { color: string; bg: string; border: string; label: string }> = {
-  admin:  { color: '#0c0b09', bg: GOLD,                    border: GOLD,                    label: 'Admin'  },
-  staff:  { color: '#b8892a', bg: 'rgba(196,145,58,0.10)', border: 'rgba(196,145,58,0.35)', label: 'Staff'  },
-  user:   { color: TEXT_MUTED, bg: 'rgba(61,53,38,0.06)',  border: 'rgba(61,53,38,0.18)',   label: 'Client' },
+// ── Role config ────────────────────────────────────────────
+const roleConfig: Record<string, {
+  bg: string; color: string; border: string; gradient: string; glow: string; label: string;
+}> = {
+  admin:  { bg: 'rgba(196,160,90,0.15)', color: '#92660a', border: 'rgba(196,160,90,0.4)',  gradient: 'linear-gradient(135deg,#c4a05a,#d4b06a)', glow: 'rgba(196,160,90,0.25)', label: 'Admin'  },
+  staff:  { bg: 'rgba(139,92,246,0.1)',  color: '#5b21b6', border: 'rgba(139,92,246,0.28)', gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', glow: 'rgba(139,92,246,0.2)',  label: 'Staff'  },
+  user:   { bg: 'rgba(16,185,129,0.1)',  color: '#065f46', border: 'rgba(16,185,129,0.25)', gradient: 'linear-gradient(135deg,#10b981,#059669)', glow: 'rgba(16,185,129,0.2)',  label: 'Client' },
 };
 
-// Avatar palette — warm tones cycling
+// ── Avatar color cycling ───────────────────────────────────
 const AVATAR_COLORS = [
-  { bg: '#c4a05a', text: '#0c0b09' },
-  { bg: '#4a7c6a', text: '#f0ead6' },
-  { bg: '#7a5c3a', text: '#f0ead6' },
-  { bg: '#5a6a8a', text: '#f0ead6' },
-  { bg: '#8a5a5a', text: '#f0ead6' },
+  { bg: 'linear-gradient(135deg,#c4a05a,#d4b06a)', text: '#1a1612' },
+  { bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', text: '#fff'    },
+  { bg: 'linear-gradient(135deg,#10b981,#059669)', text: '#fff'    },
+  { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', text: '#1a1612' },
+  { bg: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', text: '#fff'    },
+  { bg: 'linear-gradient(135deg,#ec4899,#db2777)', text: '#fff'    },
+];
+const getAvatar = (name: string) =>
+  AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
+// ── Stat card config ───────────────────────────────────────
+const statMeta = [
+  { key: 'total',   label: 'Total Users',    icon: Users,       gradient: 'linear-gradient(135deg,#6366f1,#4f46e5)', glow: 'rgba(99,102,241,0.2)'   },
+  { key: 'active',  label: 'Active',          icon: UserCheck,   gradient: 'linear-gradient(135deg,#10b981,#059669)', glow: 'rgba(16,185,129,0.2)'   },
+  { key: 'admins',  label: 'Admins',          icon: Crown,       gradient: 'linear-gradient(135deg,#c4a05a,#d4b06a)', glow: 'rgba(196,160,90,0.25)'  },
+  { key: 'staff',   label: 'Staff',           icon: Shield,      gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', glow: 'rgba(139,92,246,0.2)'   },
 ];
 
-const getAvatar = (name: string) =>
-  AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-
-// Shared input style (dark – dialog)
-const sharedInput: React.CSSProperties = {
-  backgroundColor: 'transparent',
-  border: `0.5px solid rgba(240,234,214,0.13)`,
-  borderRadius: 0,
-  color: TEXT_LIGHT,
-  fontSize: 13,
-  height: 42,
-  outline: 'none',
-  fontFamily: 'inherit',
+// ── Shared dialog input style ──────────────────────────────
+const dialogInput: React.CSSProperties = {
+  height: 42, borderRadius: 8,
+  border: `1px solid ${BORDER}`, background: CREAM,
+  fontFamily: 'Georgia, serif', fontSize: 13, color: TEXT,
+  padding: '0 12px', outline: 'none', width: '100%',
+  transition: 'border-color 0.2s',
 };
 
-const labelDark: React.CSSProperties = {
-  fontSize: 9,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.22em',
-  color: TEXT_LIGHT_MUTED,
-  display: 'block',
-  marginBottom: 6,
-};
+// ── Dialog label ───────────────────────────────────────────
+const DialogLabel = ({ children }: { children: React.ReactNode }) => (
+  <label style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '0.2em', color: MUTED, fontWeight: 700, fontFamily: 'Georgia, serif', display: 'block', marginBottom: 5 }}>
+    {children}
+  </label>
+);
 
-// ── Helper: auth token ─────────────────────────────────────────
+// ── Field wrapper ──────────────────────────────────────────
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <DialogLabel>{label}</DialogLabel>
+    {children}
+  </div>
+);
+
+// ── Auth helper ────────────────────────────────────────────
 const getToken = async (): Promise<string | null> => {
   const cachedUser = localStorage.getItem('cached-user');
   if (cachedUser) {
@@ -95,44 +99,45 @@ const getToken = async (): Promise<string | null> => {
   } catch { return null; }
 };
 
-// ── Component ──────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────
 const AdminUsers = () => {
   const { bookings, users, refreshUsers } = useHotel();
   const { toast } = useToast();
   const { user: currentUser, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  // UI state
-  const [search,        setSearch]        = useState('');
-  const [filterRole,    setFilterRole]    = useState<'All' | UserRole>('All');
-  const [hoveredId,     setHoveredId]     = useState<string | null>(null);
-  const [isCreating,    setIsCreating]    = useState(false);
+  const [search,         setSearch]         = useState('');
+  const [filterRole,     setFilterRole]     = useState<'All' | UserRole>('All');
+  const [isCreating,     setIsCreating]     = useState(false);
 
-  // Dialog state
-  const [isAddOpen,     setIsAddOpen]     = useState(false);
-  const [isEditOpen,    setIsEditOpen]    = useState(false);
-  const [isDeleteOpen,  setIsDeleteOpen]  = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAddOpen,      setIsAddOpen]      = useState(false);
+  const [isEditOpen,     setIsEditOpen]     = useState(false);
+  const [isDeleteOpen,   setIsDeleteOpen]   = useState(false);
+  const [isDetailsOpen,  setIsDetailsOpen]  = useState(false);
 
-  const [editingUser,   setEditingUser]   = useState<User | null>(null);
-  const [deletingUser,  setDeletingUser]  = useState<User | null>(null);
-  const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
+  const [editingUser,    setEditingUser]    = useState<User | null>(null);
+  const [deletingUser,   setDeletingUser]   = useState<User | null>(null);
+  const [selectedUser,   setSelectedUser]   = useState<User | null>(null);
 
-  const [newUser, setNewUser] = useState({
-    name: '', email: '', password: '', phone: '', role: 'user' as UserRole,
-  });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', phone: '', role: 'user' as UserRole });
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
 
-  // ── Auth ready ───────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) refreshUsers();
   }, [isAuthLoading, isAuthenticated, refreshUsers]);
 
-  // ── Stats ────────────────────────────────────────────────────
+  // ── Stats ──────────────────────────────────────────────
   const adminCount  = users.filter(u => u.role === 'admin').length;
   const staffCount  = users.filter(u => u.role === 'staff').length;
   const activeCount = users.filter(u => u.isActive).length;
 
-  // ── Filtering ────────────────────────────────────────────────
+  const statValues: Record<string, string | number> = {
+    total:  users.length,
+    active: activeCount,
+    admins: adminCount,
+    staff:  staffCount,
+  };
+
+  // ── Filter ─────────────────────────────────────────────
   const filtered = users.filter(u => {
     const matchSearch = !search ||
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -141,10 +146,10 @@ const AdminUsers = () => {
     return matchSearch && matchRole;
   });
 
-  // ── Handlers ─────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+      const response = await fetch(`${API_URL}/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${await getToken()}` },
         body: JSON.stringify({ role: newRole }),
@@ -167,7 +172,7 @@ const AdminUsers = () => {
     }
     setIsCreating(true);
     try {
-      const response = await fetch('http://localhost:3000/api/admin/users', {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${await getToken()}` },
         body: JSON.stringify(newUser),
@@ -188,7 +193,7 @@ const AdminUsers = () => {
     e.preventDefault();
     if (!editingUser) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${editingUser.id}`, {
+      const response = await fetch(`${API_URL}/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${await getToken()}` },
         body: JSON.stringify(editForm),
@@ -205,7 +210,7 @@ const AdminUsers = () => {
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${deletingUser.id}`, {
+      const response = await fetch(`${API_URL}/api/users/${deletingUser.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${await getToken()}` },
       });
@@ -223,7 +228,7 @@ const AdminUsers = () => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/admin/users/${userId}/status`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${await getToken()}` },
         body: JSON.stringify({ is_active: !user.isActive }),
@@ -247,219 +252,266 @@ const AdminUsers = () => {
     setIsEditOpen(true);
   };
 
-  // ── Render ────────────────────────────────────────────────────
-  return (
-    <div
-      className="animate-fade-in"
-      style={{
-        color: TEXT_DARK,
-        fontFamily: "'Jost', 'DM Sans', sans-serif",
-        backgroundColor: PAGE_BG,
-        minHeight: '100vh',
-        padding: '36px 40px',
-      }}
-    >
-      {/* ── Page Header ──────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-        marginBottom: 32, paddingBottom: 24,
-        borderBottom: `0.5px solid ${DIVIDER}`,
-      }}>
+  // ── Shared dialog components ───────────────────────────
+  const DialogHeader = ({ eyebrow, title, onClose }: { eyebrow: string; title: string; onClose?: () => void }) => (
+    <div style={{ background: DARK, padding: '20px 24px', borderRadius: '16px 16px 0 0', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: '50%', background: 'radial-gradient(circle, rgba(196,160,90,0.2) 0%, transparent 70%)' }} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ display: 'block', height: 1, width: 20, background: GOLD }} />
-            <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.32em', color: GOLD }}>
-              Directory
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ display: 'block', height: 1, width: 14, background: GOLD }} />
+            <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.28em', color: GOLD, fontWeight: 700 }}>{eyebrow}</span>
           </div>
-          <h1 style={{
-            fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: '2rem', fontWeight: 300, letterSpacing: '-0.02em',
-            color: TEXT_DARK, lineHeight: 1.1, marginBottom: 6,
-          }}>
-            Users &amp;{' '}
-            <span style={{ fontStyle: 'italic', color: GOLD }}>Staff</span>
-          </h1>
-          <p style={{ fontSize: 12, color: TEXT_MUTED, letterSpacing: '0.04em' }}>
-            {users.length} registered accounts
-          </p>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '1.25rem', fontWeight: 300, color: '#f7f3ee', fontStyle: 'italic', margin: 0 }}>{title}</h2>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{ background: 'rgba(247,243,238,0.1)', border: '1px solid rgba(247,243,238,0.15)', borderRadius: 7, padding: 6, cursor: 'pointer', color: 'rgba(247,243,238,0.6)', display: 'flex', alignItems: 'center', transition: 'all 0.2s', flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(247,243,238,0.1)'; e.currentTarget.style.color = 'rgba(247,243,238,0.6)'; }}
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
-        <button
-          onClick={() => setIsAddOpen(true)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            backgroundColor: GOLD, padding: '12px 22px',
-            fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.22em',
-            fontWeight: 700, color: '#0c0b09', border: 'none',
-            cursor: 'pointer', transition: 'background-color 0.2s', fontFamily: 'inherit',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = GOLD_LIGHT)}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = GOLD)}
-        >
-          <Plus style={{ width: 13, height: 13 }} />
-          Add User
-        </button>
+  const SaveBtn = ({ label, type = 'button', disabled = false, onClick }: { label: string; type?: 'button' | 'submit'; disabled?: boolean; onClick?: () => void }) => (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        padding: '11px', borderRadius: 9,
+        background: disabled ? 'rgba(196,160,90,0.4)' : 'linear-gradient(135deg, #c4a05a, #d4b06a)',
+        border: 'none', fontSize: 11, fontWeight: 700, color: '#1a1612',
+        cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Georgia, serif',
+        boxShadow: disabled ? 'none' : '0 3px 12px rgba(196,160,90,0.32)', transition: 'opacity 0.2s',
+      }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.opacity = '0.9'; }}
+      onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+    >
+      {disabled && <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />}
+      {label}
+      {!disabled && <ArrowRight size={13} />}
+    </button>
+  );
+
+  const CancelBtn = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1, padding: '11px', borderRadius: 9,
+        background: CREAM, border: `1px solid ${BORDER}`,
+        fontSize: 11, fontWeight: 600, color: MUTED,
+        cursor: 'pointer', fontFamily: 'Georgia, serif', transition: 'border-color 0.2s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = GOLD)}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}
+    >
+      Cancel
+    </button>
+  );
+
+  const dialogShell: React.CSSProperties = {
+    background: '#fff', borderRadius: 16, border: 'none',
+    boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+    maxWidth: 500, padding: 0,
+    fontFamily: 'Georgia, serif',
+  };
+
+  return (
+    <div className="animate-fade-in" style={{ fontFamily: 'Georgia, serif', color: TEXT }}>
+
+      {/* ── Page Header ── */}
+      <div style={{
+        background: DARK, borderRadius: 14,
+        padding: 'clamp(18px,3vw,28px) clamp(20px,4vw,32px)',
+        marginBottom: 22, position: 'relative', overflow: 'hidden',
+        boxShadow: '0 5px 24px rgba(0,0,0,0.14)',
+      }}>
+        <div style={{ position: 'absolute', top: -35, right: -35, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(196,160,90,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -20, left: '40%', width: 90, height: 90, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, transparent, #c4a05a, transparent)' }} />
+
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ display: 'block', height: 1, width: 16, background: GOLD }} />
+              <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.3em', color: GOLD, fontWeight: 700 }}>Directory</span>
+            </div>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(1.5rem,3vw,1.9rem)', fontWeight: 300, color: '#f7f3ee', lineHeight: 1.1 }}>
+              Users &amp; <em style={{ fontStyle: 'italic', color: GOLD }}>Staff</em>
+            </h1>
+            <p style={{ fontSize: 12, color: 'rgba(247,243,238,0.45)', marginTop: 4 }}>
+              {users.length} registered account{users.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsAddOpen(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'linear-gradient(135deg, #c4a05a, #d4b06a)',
+              padding: '12px 22px', borderRadius: 10,
+              fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700,
+              color: '#1a1612', border: 'none', cursor: 'pointer',
+              boxShadow: '0 3px 14px rgba(196,160,90,0.35)', transition: 'all 0.22s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(196,160,90,0.45)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 3px 14px rgba(196,160,90,0.35)'; }}
+          >
+            <Plus size={14} /> Add User
+          </button>
+        </div>
       </div>
 
-      {/* ── Stats Strip ──────────────────────────────────── */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 1, marginBottom: 32,
-        border: `0.5px solid ${BORDER_LIGHT}`,
-        backgroundColor: BORDER_LIGHT,
-        overflow: 'hidden',
-      }}>
-        {[
-          { icon: <Users style={{ width: 14, height: 14, color: GOLD }} />,         label: 'Total Users',  value: users.length,  unit: 'accounts' },
-          { icon: <UserCheck style={{ width: 14, height: 14, color: '#4a9c6a' }} />, label: 'Active',       value: activeCount,   unit: 'enabled'  },
-          { icon: <Crown style={{ width: 14, height: 14, color: GOLD }} />,          label: 'Admins',       value: adminCount,    unit: 'accounts' },
-          { icon: <Shield style={{ width: 14, height: 14, color: '#c4913a' }} />,    label: 'Staff',        value: staffCount,    unit: 'members'  },
-        ].map(stat => (
-          <div key={stat.label} style={{ backgroundColor: PANEL_BG, padding: '18px 22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-              {stat.icon}
-              <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.24em', color: TEXT_MUTED }}>
-                {stat.label}
-              </span>
+      {/* ── Stat Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
+        {statMeta.map(meta => (
+          <div
+            key={meta.key}
+            style={{
+              background: SURFACE, borderRadius: 12, padding: '15px 16px',
+              border: `1px solid ${BORDER}`,
+              boxShadow: '0 2px 10px rgba(26,22,18,0.05)',
+              position: 'relative', overflow: 'hidden',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 18px ${meta.glow}`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(26,22,18,0.05)'; }}
+          >
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: meta.gradient, borderRadius: '12px 12px 0 0' }} />
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 11, marginTop: 3, boxShadow: `0 2px 8px ${meta.glow}` }}>
+              <meta.icon size={14} color="#fff" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-              <span style={{
-                fontFamily: 'Georgia, serif', fontStyle: 'italic',
-                fontSize: '1.6rem', fontWeight: 300, color: TEXT_DARK, lineHeight: 1,
-              }}>
-                {stat.value}
-              </span>
-              <span style={{ fontSize: 10, color: TEXT_MUTED }}>{stat.unit}</span>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: '1.5rem', fontStyle: 'italic', fontWeight: 300, color: TEXT, lineHeight: 1, marginBottom: 3 }}>
+              {statValues[meta.key]}
+            </div>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: GOLD, fontWeight: 700 }}>
+              {meta.label}
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── Toolbar ──────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 340 }}>
-          <Search style={{
-            position: 'absolute', left: 12, top: '50%',
-            transform: 'translateY(-50%)', width: 13, height: 13, color: TEXT_MUTED,
-          }} />
+      {/* ── Toolbar ── */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18,
+        alignItems: 'center', padding: '12px 16px',
+        background: SURFACE, borderRadius: 12, border: `1px solid ${BORDER}`,
+        boxShadow: '0 1px 6px rgba(26,22,18,0.05)',
+      }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160, maxWidth: 320 }}>
+          <Search size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: MUTED }} />
           <input
             placeholder="Search name or email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              height: 42, backgroundColor: PANEL_BG,
-              border: `0.5px solid ${BORDER_LIGHT}`,
-              borderRadius: 0, paddingLeft: 36, paddingRight: 12,
-              fontSize: 13, color: TEXT_DARK, fontFamily: 'inherit',
-              outline: 'none', width: '100%',
+              height: 38, paddingLeft: 34, paddingRight: 12,
+              border: `1px solid ${BORDER}`, borderRadius: 8,
+              background: CREAM, fontSize: 13, color: TEXT,
+              fontFamily: 'Georgia, serif', outline: 'none', width: '100%',
+              transition: 'border-color 0.2s',
             }}
+            onFocus={e => (e.currentTarget.style.borderColor = GOLD)}
+            onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
           />
         </div>
 
         {/* Role filter pills */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {(['All', 'admin', 'staff', 'user'] as const).map(r => {
-            const rs = r !== 'All' ? ROLE_STYLES[r] : null;
-            const isActive = filterRole === r;
+            const cfg    = r !== 'All' ? roleConfig[r] : null;
+            const active = filterRole === r;
             return (
               <button
                 key={r}
                 onClick={() => setFilterRole(r)}
                 style={{
-                  padding: '6px 16px', fontSize: 9,
-                  textTransform: 'uppercase', letterSpacing: '0.18em',
-                  border: isActive
-                    ? `0.5px solid ${rs?.border || GOLD_BORDER}`
-                    : `0.5px solid ${BORDER_LIGHT}`,
-                  backgroundColor: isActive ? (rs?.bg || GOLD_PALE) : 'transparent',
-                  color: isActive ? (r === 'admin' ? '#0c0b09' : rs?.color || GOLD) : TEXT_MUTED,
-                  cursor: 'pointer', transition: 'all 0.18s', fontFamily: 'inherit',
+                  padding: '5px 13px', borderRadius: 999,
+                  fontSize: 10, fontWeight: 600, fontFamily: 'Georgia, serif',
+                  cursor: 'pointer', transition: 'all 0.18s',
+                  background: active ? (cfg ? cfg.bg : DARK) : 'transparent',
+                  color: active ? (cfg ? cfg.color : '#f7f3ee') : MUTED,
+                  border: active ? `1px solid ${cfg ? cfg.border : 'rgba(44,36,24,0.4)'}` : `1px solid ${BORDER}`,
+                  boxShadow: active ? '0 2px 6px rgba(26,22,18,0.1)' : 'none',
                 }}
-                onMouseEnter={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = rs?.border || GOLD_BORDER;
-                    e.currentTarget.style.color = rs?.color || GOLD;
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = BORDER_LIGHT;
-                    e.currentTarget.style.color = TEXT_MUTED;
-                  }
-                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = cfg?.border || BORDER; e.currentTarget.style.color = cfg?.color || GOLD; } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = MUTED; } }}
               >
-                {r === 'All' ? 'All' : r}
+                {r === 'All' ? `All (${users.length})` : r.charAt(0).toUpperCase() + r.slice(1)}
               </button>
             );
           })}
         </div>
+
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: MUTED, flexShrink: 0 }}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      {/* ── Loading ───────────────────────────────────────── */}
+      {/* ── Loading ── */}
       {isAuthLoading && (
-        <div style={{ padding: '64px 24px', textAlign: 'center', border: `0.5px solid ${BORDER_LIGHT}`, backgroundColor: PANEL_BG }}>
-          <Loader2 style={{ width: 22, height: 22, color: GOLD, margin: '0 auto 12px', animation: 'spin 1s linear infinite' }} />
-          <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.28em', color: TEXT_MUTED }}>
-            Checking authentication…
-          </p>
+        <div style={{ padding: '60px 24px', textAlign: 'center', background: SURFACE, borderRadius: 12, border: `1px solid ${BORDER}` }}>
+          <Loader2 size={22} color={GOLD} style={{ margin: '0 auto 12px', display: 'block', animation: 'spin 1s linear infinite' }} />
+          <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.25em', color: MUTED }}>Checking authentication…</p>
         </div>
       )}
 
-      {/* ── User List ─────────────────────────────────────── */}
+      {/* ── User List ── */}
       {!isAuthLoading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.length === 0 && (
-            <div style={{
-              padding: '64px 24px', textAlign: 'center',
-              border: `0.5px solid ${BORDER_LIGHT}`, backgroundColor: PANEL_BG,
-            }}>
-              <Users style={{ width: 24, height: 24, color: GOLD, margin: '0 auto 12px', opacity: 0.4 }} />
-              <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.28em', color: TEXT_MUTED }}>
-                No users found
-              </p>
+            <div style={{ padding: '60px 24px', textAlign: 'center', background: SURFACE, borderRadius: 14, border: `1px solid ${BORDER}` }}>
+              <div style={{ width: 52, height: 52, borderRadius: 13, background: 'rgba(196,160,90,0.08)', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <Users size={22} color="rgba(196,160,90,0.4)" />
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 4 }}>No users found</p>
+              <p style={{ fontSize: 11, color: MUTED }}>Try adjusting your search or filter</p>
             </div>
           )}
 
           {filtered.map(user => {
-            const userBookings = bookings.filter(b => b.userId === user.id);
-            const rs      = ROLE_STYLES[user.role] ?? ROLE_STYLES.user;
-            const av      = getAvatar(user.name || 'U');
-            const isHover = hoveredId === user.id;
+            const av    = getAvatar(user.name || 'U');
+            const rcfg  = roleConfig[user.role] ?? roleConfig.user;
+            const ubs   = bookings.filter(b => b.userId === user.id);
 
             return (
               <div
                 key={user.id}
-                onMouseEnter={() => setHoveredId(user.id)}
-                onMouseLeave={() => setHoveredId(null)}
                 style={{
-                  backgroundColor: PANEL_BG,
-                  border: `0.5px solid ${isHover ? GOLD_BORDER : BORDER_LIGHT}`,
-                  transition: 'border-color 0.25s, box-shadow 0.25s',
-                  boxShadow: isHover
-                    ? '0 6px 28px rgba(196,160,90,0.07)'
-                    : '0 1px 8px rgba(30,27,20,0.04)',
-                  opacity: user.isActive ? 1 : 0.6,
-                  overflow: 'hidden',
+                  background: SURFACE, borderRadius: 12, overflow: 'hidden',
+                  border: `1px solid ${BORDER}`,
+                  boxShadow: '0 2px 10px rgba(26,22,18,0.05)',
+                  opacity: user.isActive ? 1 : 0.65,
+                  transition: 'all 0.25s',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(196,160,90,0.4)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(26,22,18,0.09)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = '0 2px 10px rgba(26,22,18,0.05)'; }}
               >
-                <div style={{
-                  display: 'flex', alignItems: 'center',
-                  gap: 18, padding: '18px 22px', flexWrap: 'wrap',
-                }}>
+                {/* Role accent bar */}
+                <div style={{ height: 3, background: rcfg.gradient }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', flexWrap: 'wrap' }}>
                   {/* Avatar */}
                   <div
                     onClick={() => { setSelectedUser(user); setIsDetailsOpen(true); }}
                     style={{
-                      width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-                      backgroundColor: av.bg, color: av.text,
+                      width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                      background: av.bg, color: av.text,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'Georgia, serif', fontStyle: 'italic',
-                      fontSize: '1.1rem', fontWeight: 400,
+                      fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.1rem', fontWeight: 400,
                       cursor: 'pointer', transition: 'opacity 0.2s',
-                      border: `0.5px solid rgba(196,160,90,0.2)`,
+                      boxShadow: `0 2px 8px ${rcfg.glow}`,
+                      border: `2px solid rgba(255,255,255,0.6)`,
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
                     onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                     title="View details"
                   >
@@ -468,98 +520,76 @@ const AdminUsers = () => {
 
                   {/* Info */}
                   <div
-                    style={{ flex: '1 1 180px', minWidth: 0, cursor: 'pointer' }}
+                    style={{ flex: '1 1 160px', minWidth: 0, cursor: 'pointer' }}
                     onClick={() => { setSelectedUser(user); setIsDetailsOpen(true); }}
                   >
-                    <div style={{
-                      fontSize: 13, fontWeight: 600, color: TEXT_DARK,
-                      marginBottom: 3, display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      {user.name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{user.name}</span>
+                      {/* Role pill */}
+                      <span style={{
+                        fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700,
+                        padding: '2px 8px', borderRadius: 999,
+                        background: rcfg.bg, color: rcfg.color, border: `1px solid ${rcfg.border}`,
+                      }}>
+                        {rcfg.label}
+                      </span>
                       {!user.isActive && (
                         <span style={{
-                          fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.18em',
-                          padding: '2px 7px', border: '0.5px solid rgba(248,113,113,0.3)',
-                          backgroundColor: 'rgba(248,113,113,0.07)', color: '#d97070',
+                          fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700,
+                          padding: '2px 8px', borderRadius: 999,
+                          background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.25)',
                         }}>Inactive</span>
                       )}
                     </div>
-                    <p style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 2 }}>
+                    <p style={{ fontSize: 11, color: MUTED, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {user.email}
                       {user.phone && <><span style={{ margin: '0 5px', opacity: 0.4 }}>·</span>{user.phone}</>}
                     </p>
-                    <p style={{ fontSize: 10, color: 'rgba(61,53,38,0.3)', letterSpacing: '0.04em' }}>
+                    <p style={{ fontSize: 10, color: 'rgba(138,125,110,0.5)' }}>
                       Joined {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                       <span style={{ margin: '0 5px', opacity: 0.4 }}>·</span>
-                      {userBookings.length} booking{userBookings.length !== 1 ? 's' : ''}
+                      {ubs.length} booking{ubs.length !== 1 ? 's' : ''}
                     </p>
-                  </div>
-
-                  {/* Role badge */}
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '5px 12px', flexShrink: 0,
-                    border: `0.5px solid ${rs.border}`,
-                    backgroundColor: rs.bg, color: rs.color,
-                    fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em',
-                    fontFamily: 'inherit',
-                  }}>
-                    {user.role === 'admin' && <Crown style={{ width: 10, height: 10 }} />}
-                    {user.role === 'staff' && <Shield style={{ width: 10, height: 10 }} />}
-                    {rs.label}
                   </div>
 
                   {/* Role selector */}
                   <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <Select value={user.role} onValueChange={v => handleRoleChange(user.id, v as UserRole)}>
                       <SelectTrigger style={{
-                        height: 34, width: 110,
-                        backgroundColor: 'transparent',
-                        border: `0.5px solid ${BORDER_LIGHT}`,
-                        borderRadius: 0, fontSize: 11,
-                        color: TEXT_WARM, fontFamily: 'inherit',
+                        height: 34, width: 110, borderRadius: 8,
+                        border: `1px solid ${BORDER}`, background: CREAM,
+                        fontSize: 11, color: TEXT, fontFamily: 'Georgia, serif',
                         padding: '0 10px',
                       }} className="focus:ring-0 focus:ring-offset-0">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent style={{ backgroundColor: PANEL_BG, border: `0.5px solid ${BORDER_LIGHT}`, borderRadius: 0 }}>
-                        <SelectItem value="user"  style={{ fontSize: 12, color: TEXT_WARM }}>Client</SelectItem>
-                        <SelectItem value="staff" style={{ fontSize: 12, color: TEXT_WARM }}>Staff</SelectItem>
-                        <SelectItem value="admin" style={{ fontSize: 12, color: TEXT_WARM }}>Admin</SelectItem>
+                      <SelectContent style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10 }}>
+                        <SelectItem value="user"  style={{ fontSize: 12, color: TEXT, fontFamily: 'Georgia, serif' }}>Client</SelectItem>
+                        <SelectItem value="staff" style={{ fontSize: 12, color: TEXT, fontFamily: 'Georgia, serif' }}>Staff</SelectItem>
+                        <SelectItem value="admin" style={{ fontSize: 12, color: TEXT, fontFamily: 'Georgia, serif' }}>Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                     {/* Activate / Deactivate */}
                     <button
                       onClick={e => { e.stopPropagation(); toggleUserActive(user.id); }}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '7px 13px', fontSize: 9,
-                        textTransform: 'uppercase', letterSpacing: '0.16em',
-                        border: user.isActive
-                          ? '0.5px solid rgba(248,113,113,0.28)'
-                          : '0.5px solid rgba(74,156,106,0.30)',
-                        backgroundColor: user.isActive
-                          ? 'rgba(248,113,113,0.05)'
-                          : 'rgba(74,156,106,0.07)',
-                        color: user.isActive ? '#d97070' : '#4a9c6a',
-                        cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
+                        padding: '7px 12px', fontSize: 10, fontWeight: 600,
+                        fontFamily: 'Georgia, serif', letterSpacing: '0.06em',
+                        borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                        border: user.isActive ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(16,185,129,0.25)',
+                        background: user.isActive ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.08)',
+                        color: user.isActive ? '#dc2626' : '#059669',
+                        whiteSpace: 'nowrap',
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.backgroundColor = user.isActive
-                          ? 'rgba(248,113,113,0.12)' : 'rgba(74,156,106,0.14)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.backgroundColor = user.isActive
-                          ? 'rgba(248,113,113,0.05)' : 'rgba(74,156,106,0.07)';
-                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = user.isActive ? 'rgba(239,68,68,0.14)' : 'rgba(16,185,129,0.15)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = user.isActive ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.08)'; }}
                     >
-                      {user.isActive
-                        ? <><ShieldOff style={{ width: 11, height: 11 }} /> Deactivate</>
-                        : <><Shield style={{ width: 11, height: 11 }} /> Activate</>}
+                      {user.isActive ? <><ShieldOff size={11} /> Deactivate</> : <><Shield size={11} /> Activate</>}
                     </button>
 
                     {/* Edit */}
@@ -567,46 +597,31 @@ const AdminUsers = () => {
                       onClick={e => { e.stopPropagation(); openEdit(user); }}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '7px 13px', fontSize: 9,
-                        textTransform: 'uppercase', letterSpacing: '0.16em',
-                        border: `0.5px solid ${BORDER_LIGHT}`,
-                        backgroundColor: 'transparent', color: TEXT_MUTED,
-                        cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
+                        padding: '7px 12px', fontSize: 10, fontWeight: 600,
+                        fontFamily: 'Georgia, serif', letterSpacing: '0.06em',
+                        borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                        border: `1px solid ${BORDER}`, background: CREAM, color: MUTED,
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = GOLD_BORDER;
-                        e.currentTarget.style.color = GOLD;
-                        e.currentTarget.style.backgroundColor = GOLD_PALE;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = BORDER_LIGHT;
-                        e.currentTarget.style.color = TEXT_MUTED;
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(196,160,90,0.4)'; e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(196,160,90,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = MUTED; e.currentTarget.style.background = CREAM; }}
                     >
-                      <Pencil style={{ width: 11, height: 11 }} /> Edit
+                      <Pencil size={11} /> Edit
                     </button>
 
                     {/* Delete */}
                     <button
                       onClick={e => { e.stopPropagation(); setDeletingUser(user); setIsDeleteOpen(true); }}
                       style={{
+                        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                        border: '1px solid rgba(239,68,68,0.22)',
+                        background: 'rgba(239,68,68,0.07)', color: '#dc2626',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 36, height: 36,
-                        border: '0.5px solid rgba(248,113,113,0.22)',
-                        backgroundColor: 'rgba(248,113,113,0.04)',
-                        color: '#d97070', cursor: 'pointer', transition: 'all 0.2s',
+                        cursor: 'pointer', transition: 'all 0.2s',
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.backgroundColor = 'rgba(248,113,113,0.12)';
-                        e.currentTarget.style.borderColor = 'rgba(248,113,113,0.45)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.backgroundColor = 'rgba(248,113,113,0.04)';
-                        e.currentTarget.style.borderColor = 'rgba(248,113,113,0.22)';
-                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.07)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.22)'; }}
                     >
-                      <Trash2 style={{ width: 13, height: 13 }} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -616,329 +631,202 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════
-          ── DIALOGS ──────────────────────────────────────
-          ════════════════════════════════════════════════ */}
+      {/* ════════════════ DIALOGS ════════════════ */}
 
-      {/* Shared dialog shell style */}
-      {(() => {
-        const dialogShell: React.CSSProperties = {
-          backgroundColor: DARK_BG,
-          border: `0.5px solid rgba(196,160,90,0.22)`,
-          borderRadius: 0,
-          padding: 0,
-          maxWidth: 480,
-          color: TEXT_LIGHT,
-          fontFamily: "'Jost', 'DM Sans', sans-serif",
-        };
-
-        const DialogHeader = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-            padding: '22px 30px', borderBottom: `0.5px solid ${BORDER_DARK}`,
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                <span style={{ display: 'block', height: 1, width: 16, background: GOLD }} />
-                <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.3em', color: GOLD }}>
-                  {eyebrow}
-                </span>
-              </div>
-              <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '1.15rem', fontWeight: 300, fontStyle: 'italic', color: TEXT_LIGHT }}>
-                {title}
-              </h2>
+      {/* ── Add User Dialog ── */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent style={dialogShell}>
+          <DialogHeader eyebrow="New Account" title="Create a New User" onClose={() => setIsAddOpen(false)} />
+          <form
+            onSubmit={handleAddUser}
+            style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 13, maxHeight: '70vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              <Field label="Full Name *">
+                <input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Alexandra Beaumont" required style={dialogInput}
+                  onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+              </Field>
+              <Field label="Phone">
+                <input value={newUser.phone} onChange={e => setNewUser(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="+1 (000) 000-0000" type="tel" style={dialogInput}
+                  onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+              </Field>
             </div>
-          </div>
-        );
+            <Field label="Email Address *">
+              <input value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
+                placeholder="a.beaumont@email.com" type="email" required style={dialogInput}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+            </Field>
+            <Field label="Password *">
+              <input value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))}
+                placeholder="Min 8 chars, upper, lower, number" type="password" required style={dialogInput}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+            </Field>
+            <Field label="Role *">
+              <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v as UserRole }))}>
+                <SelectTrigger style={{ ...dialogInput, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} className="focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10 }}>
+                  <SelectItem value="user"  style={{ fontSize: 13, color: TEXT, fontFamily: 'Georgia, serif' }}>Client</SelectItem>
+                  <SelectItem value="staff" style={{ fontSize: 13, color: TEXT, fontFamily: 'Georgia, serif' }}>Staff</SelectItem>
+                  <SelectItem value="admin" style={{ fontSize: 13, color: TEXT, fontFamily: 'Georgia, serif' }}>Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div style={{ height: 1, background: BORDER }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <CancelBtn onClick={() => setIsAddOpen(false)} />
+              <SaveBtn label={isCreating ? 'Creating…' : 'Create User'} type="submit" disabled={isCreating} />
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-        const SaveBtn = ({ label, onClick, type = 'button', disabled = false }: any) => (
-          <button
-            type={type}
-            onClick={onClick}
-            disabled={disabled}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              backgroundColor: disabled ? 'rgba(196,160,90,0.4)' : GOLD,
-              padding: '13px 24px', fontSize: 10,
-              textTransform: 'uppercase', letterSpacing: '0.24em',
-              fontWeight: 700, color: '#0c0b09', border: 'none',
-              cursor: disabled ? 'not-allowed' : 'pointer', width: '100%',
-              transition: 'background-color 0.2s', fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { if (!disabled) e.currentTarget.style.backgroundColor = GOLD_LIGHT; }}
-            onMouseLeave={e => { if (!disabled) e.currentTarget.style.backgroundColor = GOLD; }}
+      {/* ── Edit User Dialog ── */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent style={dialogShell}>
+          <DialogHeader eyebrow="Edit Account" title={`Editing: ${editingUser?.name || ''}`} onClose={() => setIsEditOpen(false)} />
+          <form
+            onSubmit={handleEditUser}
+            style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 13 }}
           >
-            {disabled && <Loader2 style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} />}
-            {label}
-            {!disabled && <ArrowRight style={{ width: 13, height: 13 }} />}
-          </button>
-        );
+            <Field label="Full Name">
+              <input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                required style={dialogInput}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+            </Field>
+            <Field label="Email Address">
+              <input value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
+                type="email" required style={dialogInput}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+            </Field>
+            <Field label="Phone">
+              <input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                style={dialogInput}
+                onFocus={e => (e.currentTarget.style.borderColor = GOLD)} onBlur={e => (e.currentTarget.style.borderColor = BORDER)} />
+            </Field>
+            <div style={{ height: 1, background: BORDER }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <CancelBtn onClick={() => setIsEditOpen(false)} />
+              <SaveBtn label="Save Changes" type="submit" />
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-        const CancelBtn = ({ onClick }: { onClick: () => void }) => (
-          <button
-            onClick={onClick}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '13px 24px', fontSize: 10,
-              textTransform: 'uppercase', letterSpacing: '0.24em',
-              fontWeight: 500, color: TEXT_LIGHT_MUTED,
-              border: `0.5px solid ${BORDER_DARK}`,
-              backgroundColor: 'transparent', cursor: 'pointer',
-              width: '100%', fontFamily: 'inherit', transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD_BORDER; e.currentTarget.style.color = TEXT_LIGHT; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER_DARK; e.currentTarget.style.color = TEXT_LIGHT_MUTED; }}
-          >
-            Cancel
-          </button>
-        );
-
-        const FormField = ({ label, children }: { label: string; children: React.ReactNode }) => (
-          <div>
-            <label style={labelDark}>{label}</label>
-            {children}
-          </div>
-        );
-
-        return (
-          <>
-            {/* ── Add User Dialog ─────────────────────────── */}
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogContent style={dialogShell}>
-                <DialogHeader eyebrow="New Account" title="Create a New User" />
-                <form
-                  onSubmit={handleAddUser}
-                  style={{ padding: '22px 30px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '72vh', overflowY: 'auto' }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    <FormField label="Full Name *">
-                      <Input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
-                        placeholder="Alexandra Beaumont" required style={sharedInput}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[rgba(184,173,150,0.25)]" />
-                    </FormField>
-                    <FormField label="Phone">
-                      <Input value={newUser.phone} onChange={e => setNewUser(p => ({ ...p, phone: e.target.value }))}
-                        placeholder="+1 (000) 000-0000" type="tel" style={sharedInput}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[rgba(184,173,150,0.25)]" />
-                    </FormField>
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent style={{ ...dialogShell, maxWidth: 420 }}>
+          <DialogHeader eyebrow="Danger Zone" title="Delete User Account" onClose={() => setIsDeleteOpen(false)} />
+          <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {deletingUser && (() => {
+              const av = getAvatar(deletingUser.name || 'U');
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px', borderRadius: 10,
+                  background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: av.bg, color: av.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1rem', flexShrink: 0 }}>
+                    {(deletingUser.name || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <FormField label="Email Address *">
-                    <Input value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
-                      placeholder="a.beaumont@email.com" type="email" required style={sharedInput}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[rgba(184,173,150,0.25)]" />
-                  </FormField>
-                  <FormField label="Password *">
-                    <Input value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))}
-                      placeholder="Min 8 chars, upper, lower, number" type="password" required style={sharedInput}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[rgba(184,173,150,0.25)]" />
-                  </FormField>
-                  <FormField label="Role *">
-                    <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v as UserRole }))}>
-                      <SelectTrigger style={{ ...sharedInput, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px' }}
-                        className="focus:ring-0 focus:ring-offset-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent style={{ backgroundColor: DARK_MID, border: `0.5px solid rgba(196,160,90,0.2)`, borderRadius: 0 }}>
-                        <SelectItem value="user"  style={{ fontSize: 13, color: TEXT_LIGHT }}>Client</SelectItem>
-                        <SelectItem value="staff" style={{ fontSize: 13, color: TEXT_LIGHT }}>Staff</SelectItem>
-                        <SelectItem value="admin" style={{ fontSize: 13, color: TEXT_LIGHT }}>Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                  <div style={{ height: '0.5px', backgroundColor: BORDER_DARK }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
-                    <CancelBtn onClick={() => setIsAddOpen(false)} />
-                    <SaveBtn label={isCreating ? 'Creating…' : 'Create User'} type="submit" disabled={isCreating} />
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            {/* ── Edit User Dialog ────────────────────────── */}
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-              <DialogContent style={dialogShell}>
-                <DialogHeader eyebrow="Edit Account" title={`Editing: ${editingUser?.name || ''}`} />
-                <form
-                  onSubmit={handleEditUser}
-                  style={{ padding: '22px 30px', display: 'flex', flexDirection: 'column', gap: 16 }}
-                >
-                  <FormField label="Full Name">
-                    <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                      required style={sharedInput}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0" />
-                  </FormField>
-                  <FormField label="Email Address">
-                    <Input value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                      type="email" required style={sharedInput}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0" />
-                  </FormField>
-                  <FormField label="Phone">
-                    <Input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
-                      style={sharedInput}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[rgba(184,173,150,0.25)]" />
-                  </FormField>
-                  <div style={{ height: '0.5px', backgroundColor: BORDER_DARK }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
-                    <CancelBtn onClick={() => setIsEditOpen(false)} />
-                    <SaveBtn label="Save Changes" type="submit" />
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            {/* ── Delete Confirmation Dialog ──────────────── */}
-            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-              <DialogContent style={{ ...dialogShell, maxWidth: 420 }}>
-                <DialogHeader eyebrow="Danger Zone" title="Delete User Account" />
-                <div style={{ padding: '22px 30px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {/* User preview */}
-                  {deletingUser && (() => {
-                    const av = getAvatar(deletingUser.name || 'U');
-                    return (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '14px 16px',
-                        border: `0.5px solid rgba(248,113,113,0.2)`,
-                        backgroundColor: 'rgba(248,113,113,0.04)',
-                      }}>
-                        <div style={{
-                          width: 38, height: 38, borderRadius: '50%',
-                          backgroundColor: av.bg, color: av.text,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1rem',
-                        }}>
-                          {(deletingUser.name || 'U').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 13, color: TEXT_LIGHT, marginBottom: 2 }}>{deletingUser.name}</div>
-                          <div style={{ fontSize: 11, color: TEXT_LIGHT_MUTED }}>{deletingUser.email}</div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  <p style={{ fontSize: 12, color: TEXT_LIGHT_MUTED, lineHeight: 1.7 }}>
-                    This action is <span style={{ color: '#d97070' }}>permanent and irreversible</span>.
-                    All data associated with this account will be removed.
-                  </p>
-                  <div style={{ height: '0.5px', backgroundColor: BORDER_DARK }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <CancelBtn onClick={() => setIsDeleteOpen(false)} />
-                    <button
-                      onClick={handleDeleteUser}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        backgroundColor: 'rgba(217,112,112,0.15)',
-                        border: '0.5px solid rgba(217,112,112,0.4)',
-                        padding: '13px', fontSize: 10,
-                        textTransform: 'uppercase', letterSpacing: '0.22em',
-                        fontWeight: 700, color: '#d97070',
-                        cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(217,112,112,0.25)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(217,112,112,0.15)'; }}
-                    >
-                      <Trash2 style={{ width: 12, height: 12 }} /> Delete
-                    </button>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 2 }}>{deletingUser.name}</p>
+                    <p style={{ fontSize: 11, color: MUTED }}>{deletingUser.email}</p>
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
+              );
+            })()}
+            <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>
+              This action is <span style={{ color: '#dc2626', fontWeight: 700 }}>permanent and irreversible</span>.
+              All data associated with this account will be removed.
+            </p>
+            <div style={{ height: 1, background: BORDER }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <CancelBtn onClick={() => setIsDeleteOpen(false)} />
+              <button
+                onClick={handleDeleteUser}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  padding: '11px', borderRadius: 9,
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)',
+                  fontSize: 11, fontWeight: 700, color: '#dc2626',
+                  cursor: 'pointer', fontFamily: 'Georgia, serif', transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.18)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')}
+              >
+                <Trash2 size={13} /> Delete Permanently
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            {/* ── User Details Dialog ─────────────────────── */}
-            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent style={{ ...dialogShell, maxWidth: 440 }}>
-                <DialogHeader eyebrow="Account Profile" title="User Details" />
-                {selectedUser && (() => {
-                  const av  = getAvatar(selectedUser.name || 'U');
-                  const rs  = ROLE_STYLES[selectedUser.role] ?? ROLE_STYLES.user;
-                  const ubs = bookings.filter(b => b.userId === selectedUser.id);
-                  return (
-                    <div style={{ padding: '22px 30px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                      {/* Avatar + name */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{
-                          width: 56, height: 56, borderRadius: '50%',
-                          backgroundColor: av.bg, color: av.text,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.5rem',
-                          border: `0.5px solid rgba(196,160,90,0.3)`,
-                        }}>
-                          {(selectedUser.name || 'U').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: TEXT_LIGHT, marginBottom: 4 }}>
-                            {selectedUser.name}
-                          </div>
-                          <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em',
-                            padding: '3px 10px',
-                            border: `0.5px solid ${rs.border}`,
-                            backgroundColor: rs.bg, color: rs.color,
-                          }}>
-                            {rs.label}
-                          </div>
-                        </div>
-                      </div>
+      {/* ── User Details Dialog ── */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent style={{ ...dialogShell, maxWidth: 440 }}>
+          <DialogHeader eyebrow="Account Profile" title="User Details" onClose={() => setIsDetailsOpen(false)} />
+          {selectedUser && (() => {
+            const av   = getAvatar(selectedUser.name || 'U');
+            const rcfg = roleConfig[selectedUser.role] ?? roleConfig.user;
+            const ubs  = bookings.filter(b => b.userId === selectedUser.id);
+            return (
+              <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Avatar + name */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 10, background: CREAM, border: `1px solid ${BORDER}` }}>
+                  <div style={{ width: 50, height: 50, borderRadius: '50%', background: av.bg, color: av.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.4rem', flexShrink: 0, boxShadow: `0 2px 10px ${rcfg.glow}` }}>
+                    {(selectedUser.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 5 }}>{selectedUser.name}</p>
+                    <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: rcfg.bg, color: rcfg.color, border: `1px solid ${rcfg.border}` }}>
+                      {rcfg.label}
+                    </span>
+                  </div>
+                </div>
 
-                      {/* Details grid */}
-                      <div style={{
-                        border: `0.5px solid ${BORDER_DARK}`,
-                        backgroundColor: 'rgba(196,160,90,0.03)',
-                      }}>
-                        {[
-                          { label: 'Email',     value: selectedUser.email },
-                          { label: 'Phone',     value: selectedUser.phone || '—' },
-                          { label: 'Role',      value: rs.label },
-                          { label: 'Status',    value: selectedUser.isActive ? 'Active' : 'Inactive' },
-                          { label: 'Bookings',  value: `${ubs.length} booking${ubs.length !== 1 ? 's' : ''}` },
-                          { label: 'Joined',    value: new Date(selectedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) },
-                        ].map((row, i, arr) => (
-                          <div
-                            key={row.label}
-                            style={{
-                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                              padding: '10px 16px',
-                              borderBottom: i < arr.length - 1 ? `0.5px solid ${BORDER_DARK}` : 'none',
-                            }}
-                          >
-                            <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', color: TEXT_LIGHT_MUTED }}>
-                              {row.label}
-                            </span>
-                            <span style={{
-                              fontSize: 12, color: row.label === 'Status'
-                                ? selectedUser.isActive ? '#4a9c6a' : '#d97070'
-                                : TEXT_LIGHT,
-                            }}>
-                              {row.value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ height: '0.5px', backgroundColor: BORDER_DARK }} />
-                      <button
-                        onClick={() => setIsDetailsOpen(false)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          backgroundColor: GOLD, padding: '13px',
-                          fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.22em',
-                          fontWeight: 700, color: '#0c0b09', border: 'none',
-                          cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = GOLD_LIGHT)}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = GOLD)}
-                      >
-                        Close
-                      </button>
+                {/* Details table */}
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+                  {[
+                    { label: 'Email',    value: selectedUser.email },
+                    { label: 'Phone',    value: selectedUser.phone || '—' },
+                    { label: 'Status',   value: selectedUser.isActive ? 'Active' : 'Inactive', highlight: selectedUser.isActive ? '#059669' : '#dc2626' },
+                    { label: 'Bookings', value: `${ubs.length} booking${ubs.length !== 1 ? 's' : ''}` },
+                    { label: 'Joined',   value: new Date(selectedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) },
+                  ].map((row, i, arr) => (
+                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: i % 2 === 0 ? SURFACE : CREAM, borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                      <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', color: MUTED, fontWeight: 700 }}>{row.label}</span>
+                      <span style={{ fontSize: 12, color: row.highlight || TEXT, fontWeight: row.highlight ? 700 : 400 }}>{row.value}</span>
                     </div>
-                  );
-                })()}
-              </DialogContent>
-            </Dialog>
-          </>
-        );
-      })()}
+                  ))}
+                </div>
+
+                <div style={{ height: 1, background: BORDER }} />
+                <button
+                  onClick={() => setIsDetailsOpen(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '11px', borderRadius: 9,
+                    background: 'linear-gradient(135deg, #c4a05a, #d4b06a)',
+                    border: 'none', fontSize: 11, fontWeight: 700, color: '#1a1612',
+                    cursor: 'pointer', fontFamily: 'Georgia, serif',
+                    boxShadow: '0 3px 12px rgba(196,160,90,0.32)', transition: 'opacity 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                >
+                  Close
+                </button>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

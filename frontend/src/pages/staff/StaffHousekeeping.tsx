@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useHotel } from '@/contexts/HotelContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -7,7 +7,7 @@ import { RoomCondition } from '@/types/hotel';
 import { logAuditAction } from '@/pages/admin/AdminSettings';
 import { Sparkles, AlertTriangle, Wrench, BedDouble, Building2, Users } from 'lucide-react';
 
-// ── Design tokens — balanced warm palette ─────────────────
+// ── Design tokens ──────────────────────────────────────────
 const GOLD    = '#c4a05a';
 const BORDER  = 'rgba(196,160,90,0.15)';
 const SURFACE = '#ffffff';
@@ -15,6 +15,17 @@ const TEXT    = '#1a1612';
 const MUTED   = '#8a7d6e';
 const CREAM   = '#faf8f4';
 const DARK    = '#2c2418';
+
+// ── Responsive hook ────────────────────────────────────────
+const useBreakpoint = () => {
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return { isMobile: width < 640, isTablet: width >= 640 && width < 1024, width };
+};
 
 // ── Condition config ───────────────────────────────────────
 const conditionConfig: Record<RoomCondition, {
@@ -53,6 +64,8 @@ const StaffHousekeeping = () => {
   const { user }  = useAuth();
   const { toast } = useToast();
   const { createNotification } = useNotifications();
+  const { isMobile, isTablet } = useBreakpoint();
+
   const [filter, setFilter]         = useState<string>('all');
   const [hoveredId, setHoveredId]   = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -90,26 +103,50 @@ const StaffHousekeeping = () => {
     }
   };
 
+  // Responsive grid: 1 col mobile → 2 col tablet → auto-fill desktop
+  const roomGridCols = isMobile
+    ? '1fr'
+    : isTablet
+    ? 'repeat(2, 1fr)'
+    : 'repeat(auto-fill, minmax(300px, 1fr))';
+
+  // Stat cards: 1 col mobile → 3 col tablet+
+  const statGridCols = isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)';
+
   return (
     <div className="animate-fade-in" style={{ fontFamily: 'Georgia, serif', color: TEXT }}>
 
       {/* ── Page Header ── */}
       <div style={{
-        background: DARK, borderRadius: 14, padding: '24px 28px',
-        marginBottom: 22, position: 'relative', overflow: 'hidden',
+        background: DARK, borderRadius: 14,
+        padding: isMobile ? '18px 16px' : '24px 28px',
+        marginBottom: isMobile ? 16 : 22,
+        position: 'relative', overflow: 'hidden',
         boxShadow: '0 5px 24px rgba(0,0,0,0.14)',
       }}>
         <div style={{ position: 'absolute', top: -35, right: -35, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle, rgba(196,160,90,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -20, left: '35%', width: 90, height: 90, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, transparent, #c4a05a, transparent)' }} />
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+        <div style={{
+          position: 'relative', zIndex: 1,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+        }}>
+          {/* Title */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ display: 'block', height: 1, width: 16, background: GOLD }} />
               <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.3em', color: GOLD, fontWeight: 700 }}>Staff Portal</span>
             </div>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '1.85rem', fontWeight: 300, color: '#f7f3ee', lineHeight: 1.1 }}>
+            <h1 style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: isMobile ? '1.4rem' : '1.85rem',
+              fontWeight: 300, color: '#f7f3ee', lineHeight: 1.1,
+            }}>
               House<em style={{ fontStyle: 'italic', color: GOLD }}>keeping</em>
             </h1>
             <p style={{ fontSize: 12, color: 'rgba(247,243,238,0.45)', marginTop: 4 }}>
@@ -117,8 +154,11 @@ const StaffHousekeeping = () => {
             </p>
           </div>
 
-          {/* Header stat chips */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          {/* Header stat chips — full width row on mobile */}
+          <div style={{
+            display: 'flex', gap: 8,
+            width: isMobile ? '100%' : 'auto',
+          }}>
             {[
               { key: 'clean',       val: counts.clean,       color: '#065f46', border: 'rgba(16,185,129,0.3)',  bg: 'rgba(16,185,129,0.12)',  label: 'Clean'       },
               { key: 'dirty',       val: counts.dirty,       color: '#b45309', border: 'rgba(245,158,11,0.3)',  bg: 'rgba(245,158,11,0.12)',  label: 'Dirty'       },
@@ -128,7 +168,9 @@ const StaffHousekeeping = () => {
                 key={chip.key}
                 onClick={() => setFilter(filter === chip.key ? 'all' : chip.key)}
                 style={{
-                  padding: '9px 14px', borderRadius: 10, textAlign: 'center', cursor: 'pointer',
+                  flex: isMobile ? 1 : undefined,
+                  padding: isMobile ? '8px 8px' : '9px 14px',
+                  borderRadius: 10, textAlign: 'center', cursor: 'pointer',
                   background: filter === chip.key ? chip.bg : 'rgba(247,243,238,0.06)',
                   border: `1px solid ${filter === chip.key ? chip.border : 'rgba(247,243,238,0.12)'}`,
                   transition: 'all 0.2s',
@@ -136,8 +178,12 @@ const StaffHousekeeping = () => {
                 onMouseEnter={e => { if (filter !== chip.key) e.currentTarget.style.background = 'rgba(247,243,238,0.1)'; }}
                 onMouseLeave={e => { if (filter !== chip.key) e.currentTarget.style.background = 'rgba(247,243,238,0.06)'; }}
               >
-                <p style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.2em', color: filter === chip.key ? chip.color : 'rgba(247,243,238,0.5)', fontWeight: 700, marginBottom: 3 }}>{chip.label}</p>
-                <p style={{ fontFamily: 'Georgia, serif', fontSize: '1.4rem', fontStyle: 'italic', fontWeight: 300, color: filter === chip.key ? chip.color : GOLD, lineHeight: 1 }}>{chip.val}</p>
+                <p style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.15em', color: filter === chip.key ? chip.color : 'rgba(247,243,238,0.5)', fontWeight: 700, marginBottom: 3 }}>
+                  {isMobile ? chip.label.slice(0, 5) : chip.label}
+                </p>
+                <p style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? '1.2rem' : '1.4rem', fontStyle: 'italic', fontWeight: 300, color: filter === chip.key ? chip.color : GOLD, lineHeight: 1 }}>
+                  {chip.val}
+                </p>
               </div>
             ))}
           </div>
@@ -145,20 +191,26 @@ const StaffHousekeeping = () => {
       </div>
 
       {/* ── Clickable Stat Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: statGridCols,
+        gap: isMobile ? 10 : 12,
+        marginBottom: isMobile ? 16 : 20,
+      }}>
         {[
           { key: 'clean',       label: 'Clean Rooms',    icon: Sparkles,      gradient: 'linear-gradient(135deg,#10b981,#059669)', glow: 'rgba(16,185,129,0.2)'  },
           { key: 'dirty',       label: 'Needs Cleaning', icon: AlertTriangle, gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', glow: 'rgba(245,158,11,0.2)'  },
           { key: 'maintenance', label: 'Maintenance',    icon: Wrench,        gradient: 'linear-gradient(135deg,#ef4444,#dc2626)', glow: 'rgba(239,68,68,0.2)'   },
         ].map(stat => {
-          const cfg    = conditionConfig[stat.key as RoomCondition];
+          const cfg     = conditionConfig[stat.key as RoomCondition];
           const isActive = filter === stat.key;
           return (
             <div
               key={stat.key}
               onClick={() => setFilter(filter === stat.key ? 'all' : stat.key)}
               style={{
-                background: SURFACE, borderRadius: 12, padding: '16px 18px',
+                background: SURFACE, borderRadius: 12,
+                padding: isMobile ? '12px 10px' : '16px 18px',
                 border: isActive ? `1px solid ${cfg.border}` : `1px solid ${BORDER}`,
                 boxShadow: isActive ? `0 4px 16px ${stat.glow}` : '0 2px 10px rgba(26,22,18,0.05)',
                 cursor: 'pointer', position: 'relative', overflow: 'hidden',
@@ -168,14 +220,24 @@ const StaffHousekeeping = () => {
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = isActive ? `0 4px 16px ${stat.glow}` : '0 2px 10px rgba(26,22,18,0.05)'; }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: stat.gradient, borderRadius: '12px 12px 0 0' }} />
-              <div style={{ width: 32, height: 32, borderRadius: 9, background: stat.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, marginTop: 4, boxShadow: `0 2px 8px ${stat.glow}` }}>
-                <stat.icon size={15} color="#fff" />
+              <div style={{
+                width: isMobile ? 26 : 32, height: isMobile ? 26 : 32,
+                borderRadius: 9, background: stat.gradient,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: isMobile ? 8 : 12, marginTop: 4,
+                boxShadow: `0 2px 8px ${stat.glow}`,
+              }}>
+                <stat.icon size={isMobile ? 12 : 15} color="#fff" />
               </div>
-              <div style={{ fontFamily: 'Georgia, serif', fontSize: '1.8rem', fontStyle: 'italic', fontWeight: 300, color: TEXT, lineHeight: 1, marginBottom: 3 }}>
+              <div style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: isMobile ? '1.4rem' : '1.8rem',
+                fontStyle: 'italic', fontWeight: 300, color: TEXT, lineHeight: 1, marginBottom: 3,
+              }}>
                 {counts[stat.key as keyof typeof counts]}
               </div>
-              <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: GOLD, fontWeight: 700 }}>
-                {stat.label}
+              <div style={{ fontSize: isMobile ? 7 : 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: GOLD, fontWeight: 700 }}>
+                {isMobile ? stat.label.replace(' Rooms', '').replace('Needs ', '') : stat.label}
               </div>
             </div>
           );
@@ -183,13 +245,18 @@ const StaffHousekeeping = () => {
       </div>
 
       {/* ── Filter Pills ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: MUTED, marginRight: 2 }}>Filter:</span>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        gap: 8, marginBottom: isMobile ? 14 : 18, flexWrap: 'wrap',
+      }}>
+        {!isMobile && (
+          <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: MUTED, marginRight: 2 }}>Filter:</span>
+        )}
         {[
           { value: 'all',         label: `All (${rooms.length})` },
           { value: 'clean',       label: `Clean (${counts.clean})` },
           { value: 'dirty',       label: `Dirty (${counts.dirty})` },
-          { value: 'maintenance', label: `Maintenance (${counts.maintenance})` },
+          { value: 'maintenance', label: `Maint. (${counts.maintenance})` },
         ].map(opt => {
           const active = filter === opt.value;
           const cfg    = opt.value !== 'all' ? conditionConfig[opt.value as RoomCondition] : null;
@@ -198,20 +265,22 @@ const StaffHousekeeping = () => {
               key={opt.value}
               onClick={() => setFilter(opt.value)}
               style={{
-                padding: '6px 14px', borderRadius: 999,
-                fontSize: 11, fontWeight: 600, fontFamily: 'Georgia, serif',
+                padding: isMobile ? '5px 10px' : '6px 14px',
+                borderRadius: 999,
+                fontSize: isMobile ? 10 : 11, fontWeight: 600, fontFamily: 'Georgia, serif',
                 cursor: 'pointer', transition: 'all 0.2s',
                 background: active ? (cfg ? cfg.activeBg : DARK) : SURFACE,
                 color: active ? (cfg ? cfg.color : '#f7f3ee') : MUTED,
                 border: active ? `1px solid ${cfg ? cfg.border : 'rgba(44,36,24,0.4)'}` : `1px solid ${BORDER}`,
                 boxShadow: active ? (cfg ? `0 2px 8px ${cfg.glow}` : '0 3px 10px rgba(26,22,18,0.18)') : 'none',
+                whiteSpace: 'nowrap',
               }}
             >
               {opt.label}
             </button>
           );
         })}
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: MUTED }}>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: MUTED, flexShrink: 0 }}>
           {filtered.length} room{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -229,7 +298,7 @@ const StaffHousekeeping = () => {
           <p style={{ fontSize: 11, color: MUTED }}>Try a different filter</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: roomGridCols, gap: isMobile ? 12 : 16 }}>
           {filtered.map(room => {
             const ccfg    = conditionConfig[room.condition] ?? conditionConfig.clean;
             const tcfg    = tierConfig[room.tier] ?? tierConfig.Standard;
@@ -254,7 +323,7 @@ const StaffHousekeeping = () => {
                 <div style={{ height: 4, background: tcfg.barColor, borderRadius: '14px 14px 0 0' }} />
 
                 {/* Room image */}
-                <div style={{ position: 'relative', height: 150, overflow: 'hidden' }}>
+                <div style={{ position: 'relative', height: isMobile ? 130 : 150, overflow: 'hidden' }}>
                   {room.images?.[0] ? (
                     <img
                       src={room.images[0]}
@@ -291,16 +360,16 @@ const StaffHousekeeping = () => {
                     padding: '3px 9px', borderRadius: 999,
                     background: ccfg.bg, color: ccfg.color, border: `1px solid ${ccfg.border}`,
                   }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: ccfg.dot }} />
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: ccfg.dot, flexShrink: 0 }} />
                     {ccfg.label}
                   </div>
 
                   {/* Room name + price — bottom */}
-                  <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                    <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.05rem', fontWeight: 300, color: '#f7f3ee', lineHeight: 1 }}>
+                  <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+                    <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.05rem', fontWeight: 300, color: '#f7f3ee', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {room.name}
                     </p>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <p style={{ fontFamily: 'Georgia, serif', fontSize: '1.05rem', fontStyle: 'italic', fontWeight: 300, color: '#f7f3ee', lineHeight: 1 }}>${room.pricePerNight}</p>
                       <p style={{ fontSize: 8, color: 'rgba(247,243,238,0.58)' }}>/night</p>
                     </div>
@@ -308,9 +377,9 @@ const StaffHousekeeping = () => {
                 </div>
 
                 {/* Card body */}
-                <div style={{ padding: '14px 16px 16px' }}>
+                <div style={{ padding: isMobile ? '12px 12px 14px' : '14px 16px 16px' }}>
                   {/* Meta chips */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
                     {[
                       { icon: Building2, label: `Floor ${room.floor}` },
                       { icon: Users,     label: `${room.capacity} guests` },
@@ -320,6 +389,7 @@ const StaffHousekeeping = () => {
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         fontSize: 10, color: MUTED,
                         padding: '3px 8px', borderRadius: 6, background: CREAM, border: `1px solid ${BORDER}`,
+                        whiteSpace: 'nowrap',
                       }}>
                         <m.icon size={10} color={GOLD} />
                         {m.label}
@@ -331,7 +401,7 @@ const StaffHousekeeping = () => {
                   <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', color: MUTED, marginBottom: 8, fontWeight: 700 }}>
                     Set Condition
                   </p>
-                  <div style={{ display: 'flex', gap: 7 }}>
+                  <div style={{ display: 'flex', gap: isMobile ? 5 : 7 }}>
                     {(['clean', 'dirty', 'maintenance'] as RoomCondition[]).map(cond => {
                       const c         = conditionConfig[cond];
                       const isCurrent = room.condition === cond;
@@ -342,9 +412,10 @@ const StaffHousekeeping = () => {
                           disabled={isCurrent || isUpd}
                           style={{
                             flex: 1,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                            padding: '8px 0', fontSize: 9,
-                            textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: isCurrent ? 700 : 500,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                            padding: isMobile ? '7px 2px' : '8px 0',
+                            fontSize: isMobile ? 8 : 9,
+                            textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: isCurrent ? 700 : 500,
                             borderRadius: 8,
                             border: isCurrent ? `1px solid ${c.border}` : `1px solid ${BORDER}`,
                             background: isCurrent ? c.activeBg : CREAM,
@@ -353,6 +424,7 @@ const StaffHousekeeping = () => {
                             transition: 'all 0.18s',
                             fontFamily: 'Georgia, serif',
                             boxShadow: isCurrent ? `0 2px 6px ${c.glow}` : 'none',
+                            minWidth: 0,
                           }}
                           onMouseEnter={e => {
                             if (!isCurrent && !isUpd) {
@@ -369,10 +441,14 @@ const StaffHousekeeping = () => {
                             }
                           }}
                         >
-                          {cond === 'clean'       && <Sparkles size={11} />}
-                          {cond === 'dirty'       && <AlertTriangle size={11} />}
-                          {cond === 'maintenance' && <Wrench size={11} />}
-                          {c.label}
+                          {cond === 'clean'       && <Sparkles size={isMobile ? 9 : 11} />}
+                          {cond === 'dirty'       && <AlertTriangle size={isMobile ? 9 : 11} />}
+                          {cond === 'maintenance' && <Wrench size={isMobile ? 9 : 11} />}
+                          {/* Shorten label on mobile */}
+                          {isMobile
+                            ? cond === 'maintenance' ? 'Maint.' : c.label
+                            : c.label
+                          }
                         </button>
                       );
                     })}
