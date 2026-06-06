@@ -418,7 +418,7 @@ const UserDashboard = () => {
     bookings.length,
     bookings.filter(b => b.status === 'pending').length,
     bookings.filter(b => b.status === 'confirmed' || b.status === 'checked_in').length,
-    `$${bookings.filter(b => b.paymentStatus === 'completed').reduce((s, b) => s + b.totalAmount, 0)}`,
+    `$${bookings.filter(b => b.paymentStatus === 'completed' || b.paymentStatus === 'paid').reduce((s, b) => s + b.totalAmount, 0)}`,
   ];
 
   return (

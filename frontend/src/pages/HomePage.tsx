@@ -141,8 +141,8 @@ const HomePage = () => {
 
           {/* Section header */}
           <div className="features-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '4rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+            <div className="features-title-block">
+              <div className="features-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
                 <span style={{ display: 'block', height: '1px', width: '32px', background: '#c4a05a' }} />
                 <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.28em', color: '#c4a05a' }}>Our Promise</span>
               </div>
@@ -401,10 +401,10 @@ const HomePage = () => {
 
         /* ── Mobile (≤640px) ── */
         @media (max-width: 640px) {
-          .hero-pad         { padding: 0 1.25rem; }
-          .section-pad      { padding-left: 1.25rem; padding-right: 1.25rem; }
+          .hero-pad            { padding: 0 1.25rem; }
+          .section-pad         { padding-left: 1.25rem; padding-right: 1.25rem; }
           .testimonial-section { padding: 3rem 1.25rem; }
-          .cta-section      { padding: 5rem 1.25rem; }
+          .cta-section         { padding: 5rem 1.25rem; }
 
           .grid-4 { grid-template-columns: 1fr; }
           .grid-3 { grid-template-columns: 1fr; }
@@ -412,11 +412,37 @@ const HomePage = () => {
           /* Decorative corners clip on narrow screens */
           .corner-dec { display: none; }
 
-          /* Remove left border when single-column — it hangs in the air */
+          /* Remove left border when single-column */
           .stats-grid { border-left: none !important; }
 
           /* Separate each stat with a top border when stacked */
           .stat-cell { border-top: 1px solid rgba(247,243,238,0.06); }
+
+          /* ── FIX: centre the "Our Promise / Why Choose LuxeStay" header on mobile ── */
+          .features-header {
+            align-items: center !important;
+            text-align: center !important;
+          }
+
+          /* Centre the eyebrow line + label */
+          .features-eyebrow {
+            justify-content: center !important;
+          }
+
+          /* Centre the h2 inside the title block */
+          .features-title-block {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center !important;
+          }
+
+          /* Centre and full-width the tagline paragraph */
+          .features-tagline {
+            text-align: center !important;
+            max-width: 100% !important;
+            width: 100%;
+          }
         }
 
         /* ── Hover States ── */

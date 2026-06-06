@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { logAuditAction } from '@/pages/admin/AdminSettings';
@@ -365,7 +365,9 @@ const StaffReservations = () => {
         )}
 
         {filtered.map(booking => {
-          const guest   = users.find(u => u.id === booking.userId);
+          // Use joined user data from booking if available, otherwise look up in users array
+          const bookingUser = (booking as any).users;
+          const guest = bookingUser?.name ? bookingUser : users.find(u => u.id === booking.userId);
           const room    = rooms.find(r => r.id === booking.roomId);
           const payment = payments.find(p => p.bookingId === booking.id);
           const ss      = STATUS_STYLES[booking.status]           ?? STATUS_STYLES.pending;
@@ -555,6 +557,7 @@ const StaffReservations = () => {
           ════════════════════════════════════════ */}
       <Dialog open={!!noteDialog} onOpenChange={() => setNoteDialog(null)}>
         <DialogContent style={{ ...dialogShell, maxWidth: 460 }}>
+          <DialogTitle className="sr-only">Add Guest Note</DialogTitle>
           <DialogHeader eyebrow="Staff Note" title="Add Guest Note" />
           {noteDialog && (() => {
             const booking = bookings.find(b => b.id === noteDialog);
@@ -658,6 +661,7 @@ const StaffReservations = () => {
           ════════════════════════════════════════ */}
       <Dialog open={!!detailDialog} onOpenChange={() => setDetailDialog(null)}>
         <DialogContent style={{ ...dialogShell, maxWidth: 500 }}>
+          <DialogTitle className="sr-only">Booking Detail</DialogTitle>
           <DialogHeader eyebrow="Reservation" title="Booking Detail" />
           {detailBooking && (
             <div style={{ padding: '22px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>

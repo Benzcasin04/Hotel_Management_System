@@ -57,6 +57,8 @@ const Panel = ({ children, style }: { children: React.ReactNode; style?: React.C
     borderRadius: 12,
     padding: '22px 24px',
     boxShadow: '0 2px 12px rgba(26,22,18,0.06)',
+    display: 'flex',
+    flexDirection: 'column',
     ...style,
   }}>
     {children}
@@ -313,7 +315,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── Charts Row 2: Tier / Status / Payments ── */}
-      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: charts2Cols, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: charts2Cols, marginBottom: 16, alignItems: 'stretch' }}>
         <Panel>
           <Eyebrow label="Room Tier" />
           <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '1rem', fontWeight: 300, fontStyle: 'italic', color: TEXT, marginBottom: 16 }}>
@@ -328,6 +330,8 @@ const AdminDashboard = () => {
               <Bar dataKey="revenue" fill={GOLD} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ChartContainer>
+          {/* Spacer to match pie chart legend height */}
+          <div style={{ minHeight: 28, marginTop: 8 }} />
         </Panel>
 
         <Panel>
@@ -358,8 +362,8 @@ const AdminDashboard = () => {
           </div>
         </Panel>
 
-        {/* On tablet this becomes a 2-col grid; payment panel sits below. We keep it in the same grid row for desktop */}
-        <Panel style={isTablet ? { gridColumn: '1 / -1' } : {}}>
+        {/* Payment Status panel - aligned with other charts */}
+        <Panel>
           <Eyebrow label="Payments" />
           <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '1rem', fontWeight: 300, fontStyle: 'italic', color: TEXT, marginBottom: 16 }}>
             Payment <span style={{ color: '#10b981' }}>Status</span>
@@ -370,7 +374,7 @@ const AdminDashboard = () => {
               <Pie
                 data={paymentStatusData} dataKey="value" nameKey="name"
                 cx="50%" cy="50%"
-                outerRadius={isTablet ? 70 : pieOuter} innerRadius={isTablet ? 28 : pieInner}
+                outerRadius={pieOuter} innerRadius={pieInner}
                 label={({ value }) => `${value}`} labelLine={false}
               >
                 {paymentStatusData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="transparent" />)}

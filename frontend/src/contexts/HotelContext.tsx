@@ -3,6 +3,9 @@ import { Room, Booking, Payment, User, BookingStatus, PaymentStatus, PaymentMeth
 // Note: mock data removed - now using backend API
 import { supabase } from '@/lib/supabase';
 
+// API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3007';
+
 interface HotelContextType {
   rooms: Room[];
   bookings: Booking[];
@@ -101,7 +104,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch rooms from backend on mount
   const fetchRooms = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3007/api/rooms');
+      const response = await fetch(`${API_URL}/api/rooms`);
       if (!response.ok) throw new Error('Failed to fetch rooms');
       const data = await response.json();
       const mappedRooms = (data.data || []).map(mapRoomFromDB);
@@ -127,8 +130,8 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Use /my endpoint for regular users, / for admin/staff
       const endpoint = isAdminOrStaff 
-        ? 'http://localhost:3007/api/bookings' 
-        : 'http://localhost:3007/api/bookings/my';
+        ? `${API_URL}/api/bookings` 
+        : `${API_URL}/api/bookings/my`;
         
       const response = await fetch(endpoint, {
         headers: {
@@ -160,8 +163,8 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Use /my endpoint for regular users, / for admin/staff
       const endpoint = isAdminOrStaff 
-        ? 'http://localhost:3007/api/payments' 
-        : 'http://localhost:3007/api/payments/my';
+        ? `${API_URL}/api/payments` 
+        : `${API_URL}/api/payments/my`;
         
       const response = await fetch(endpoint, {
         headers: {
@@ -200,7 +203,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       
       console.log('Fetching users with token:', token ? 'present' : 'missing');
-      const response = await fetch('http://localhost:3007/api/users', {
+      const response = await fetch(`${API_URL}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -261,7 +264,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         condition: room.condition,
       };
 
-      const response = await fetch('http://localhost:3007/api/rooms', {
+      const response = await fetch(`${API_URL}/api/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +307,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
       if (updates.condition !== undefined) updateData.condition = updates.condition;
 
-      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
+      const response = await fetch(`${API_URL}/api/rooms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -328,7 +331,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const token = await getAuthToken();
       
-      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
+      const response = await fetch(`${API_URL}/api/rooms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -354,7 +357,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteRoom = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/rooms/${id}`, {
+      const response = await fetch(`${API_URL}/api/rooms/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -412,7 +415,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         guest_notes: booking.guestNotes,
       };
 
-      const response = await fetch('http://localhost:3007/api/bookings', {
+      const response = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -439,7 +442,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateBookingStatus = useCallback(async (id: string, status: BookingStatus) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/bookings/${id}/status`, {
+      const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -461,7 +464,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateBookingForStaff = useCallback(async (id: string, status: BookingStatus) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
+      const response = await fetch(`${API_URL}/api/bookings/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -489,15 +492,15 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         throw new Error('Booking not found');
       }
       
-      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
+      const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${await getAuthToken()}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: currentBooking.status,
-          payment_status: paymentStatus 
+          payment_status: paymentStatus
         }),
       });
 
@@ -519,7 +522,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const cancelBooking = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/bookings/${id}`, {
+      const response = await fetch(`${API_URL}/api/bookings/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -537,7 +540,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteBookingPermanently = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/bookings/${id}/permanent`, {
+      const response = await fetch(`${API_URL}/api/bookings/${id}/permanent`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
@@ -556,7 +559,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const createPayment = useCallback(async (bookingId: string, amount: number, method: PaymentMethod) => {
     try {
       const userId = await getCurrentUserId();
-      const response = await fetch('http://localhost:3007/api/payments', {
+      const response = await fetch(`${API_URL}/api/payments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -588,7 +591,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updatePaymentStatus = useCallback(async (paymentId: string, status: PaymentStatus, note?: string, _adjustedBy?: string) => {
     try {
       const userId = await getCurrentUserId();
-      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}`, {
+      const response = await fetch(`${API_URL}/api/payments/${paymentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -613,7 +616,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const adjustPaymentAmount = useCallback(async (paymentId: string, amount: number, note?: string, _adjustedBy?: string) => {
     try {
       const userId = await getCurrentUserId();
-      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}`, {
+      const response = await fetch(`${API_URL}/api/payments/${paymentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -637,7 +640,7 @@ export const HotelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const processRefund = useCallback(async (paymentId: string, note?: string) => {
     try {
-      const response = await fetch(`http://localhost:3007/api/payments/${paymentId}/refund`, {
+      const response = await fetch(`${API_URL}/api/payments/${paymentId}/refund`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

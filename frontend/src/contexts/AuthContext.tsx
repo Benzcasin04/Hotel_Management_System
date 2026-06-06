@@ -3,6 +3,9 @@ import { User, UserRole } from '@/types/hotel';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
+// API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3007';
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -187,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Call backend API instead of Supabase directly
-      const response = await fetch(`http://localhost:3000/api/users/${user.id}`, {
+      const response = await fetch(`${API_URL}/api/users/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
